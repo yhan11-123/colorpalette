@@ -1,0 +1,851 @@
+/* components.css — cards, buttons, tray, panels.
+ *
+ * Two rules govern everything below:
+ *
+ *   No hue. Emphasis comes from inversion, state from lightness, weight,
+ *   border and position. The only chromatic pixels are user data — swatches,
+ *   chips, and the slider tracks, which are data visualization.
+ *
+ *   No shadows. Layers are separated with a 1px line. Where you see an inset
+ *   ring it is a line drawn inside a color surface, not depth.
+ */
+
+
+/* ================= chrome ================= */
+
+/* Configuration failures, stated on the page rather than only in the console.
+   Weight and a heavy border carry the urgency — there is no red here, because
+   a status color on this site would be a chromatic pixel that is not user data. */
+.banner {
+	padding: var(--s3) var(--s4);
+	margin-bottom: var(--s5);
+
+	font-size: var(--t2);
+	font-weight: var(--w-medium);
+	line-height: var(--lh-body);
+
+	border: 2px solid var(--text);
+	border-radius: var(--r-ui);
+	background: var(--surface);
+}
+
+.topbar {
+	display: flex;
+	flex-wrap: wrap;
+	gap: var(--s4);
+	align-items: baseline;
+	justify-content: space-between;
+
+	padding-bottom: var(--s4);
+	margin-bottom: var(--s6);
+	border-bottom: 1px solid var(--line);
+}
+
+.brand {
+	font-size: var(--t3);
+	font-weight: var(--w-medium);
+}
+
+.nav {
+	display: flex;
+	gap: var(--s4);
+	font-size: var(--t2);
+	color: var(--text-muted);
+}
+
+/* the current page is stated by weight and color, never by an accent */
+.nav a[aria-current='page'] {
+	color: var(--text);
+	font-weight: var(--w-medium);
+}
+
+.bar {
+	display: flex;
+	flex-wrap: wrap;
+	gap: var(--s4);
+	align-items: center;
+	justify-content: space-between;
+	margin-bottom: var(--s4);
+}
+
+main {
+	display: flex;
+	flex-direction: column;
+	gap: var(--s6);
+}
+
+
+/* ================= wall and card ================= */
+
+.wall {
+	display: flex;
+	flex-wrap: wrap;
+
+	/* Cards carry no border — the color is the edge — so the blank between
+	   them is the only thing telling one palette from the next. Two neighbours
+	   ending and starting on similar colors have to read as two palettes on
+	   nothing but this gap, which is why it is this large.
+
+	   One value for all three views: the separation problem is identical in
+	   each, and a per-view gap is one more pair of numbers to keep in step. */
+	gap: var(--s7);
+
+	/* pack rows to the top; without this, wrapped rows stretch to fill */
+	align-content: flex-start;
+
+	/* never justify-content: space-between — spreading cards would make width
+	   stop meaning color count. The ragged right edge is the design. */
+}
+
+.card {
+	display: flex;
+
+	/* --n = color count, set per card. Width is the data. */
+	width: calc(var(--n) * var(--unit));
+	height: var(--card-height);
+
+	/* Color count has no ceiling, so a palette can ask for more width than the
+	   page has. Capping is the lesser loss: past this point a color is thinner
+	   than a unit and width stops being countable, but the alternative is the
+	   whole site scrolling sideways. */
+	max-width: 100%;
+
+	border-radius: var(--r-swatch);
+	overflow: hidden;
+
+	/* no border: the color is the edge */
+}
+
+/* One color is one unit. Every swatch grows by the same amount from a zero
+   basis, so a card of n colors divides into n equal parts and a chip is the
+   same width in a 2-color card as in a 6-color one. Width still means color
+   count; nothing inside the card carries information of its own. */
+.swatch {
+	flex: 1 0 0;
+	border-radius: var(--r-swatch);
+	position: relative;      /* anchors the remove control in the tray */
+}
+
+/* Fills the swatch so the whole color area selects it, and stays transparent
+   so it never covers the color it is standing on. */
+.swatch__select {
+	position: absolute;
+	inset: 0;
+	width: 100%;
+	height: 100%;
+	cursor: grab;
+
+	/* pan-y hands vertical scrolling back to the browser while keeping
+	   horizontal movement for the reorder. Without it a touch drag scrolls
+	   the page instead of moving the color. */
+	touch-action: pan-y;
+}
+
+.tray:active .swatch__select {
+	cursor: grabbing;
+}
+
+/* Appears on hover in the top-right corner of the color it removes. Hidden by
+   opacity rather than display so it stays reachable by keyboard — display:none
+   would make it unfocusable, and :focus-within could then never fire. */
+.swatch__remove {
+	position: absolute;
+	top: var(--s1);
+	right: var(--s1);
+
+	display: grid;
+	place-items: center;
+	width: var(--s5);
+	height: var(--s5);
+
+	font-size: var(--t2);
+	line-height: 1;
+
+	/* a control, not a color surface: 2px corners, and achromatic so it reads
+	   on top of any color the user has chosen */
+	background: var(--bg);
+	color: var(--text);
+	border: 1px solid var(--text);
+	border-radius: var(--r-ui);
+
+	opacity: 0;
+	pointer-events: none;
+}
+
+.swatch:hover .swatch__remove,
+.swatch__remove:focus-visible {
+	opacity: 1;
+	pointer-events: auto;
+}
+
+
+/* ---------- wall views ----------
+ *
+ * Three ways of drawing the SAME markup. Nothing below is produced by JS: the
+ * card renderer emits one structure and a class on .wall decides how it reads,
+ * so switching views cannot drift from what is on the wall.
+ *
+ * Boxes is the canonical view and the default. It is the only one where width
+ * means color count, which is the premise the rest of the site is built on.
+ * The other two set that premise aside on purpose — in them the count is read
+ * off the number of circles or segments instead.
+ */
+
+/* --- circles: colors as overlapping dots --- */
+
+.wall--circle {
+	--dot: 144px;
+}
+
+.wall--circle .card {
+	width: auto;
+	max-width: 100%;
+	height: auto;
+	overflow: visible;      /* the box view clips; circles must not be cut */
+	align-items: center;
+
+	/* Circles are a fixed size and do not shrink, so a long palette has to
+	   wrap onto a second line rather than run off the page. */
+	flex-wrap: wrap;
+	row-gap: var(--s2);
+}
+
+.wall--circle .swatch {
+	flex: none;
+	width: var(--dot);
+	height: var(--dot);
+	border-radius: 50%;
+
+	/* Each circle sits partly on the one before it. Later siblings paint on
+	   top, so the overlap reads left to right in palette order.
+
+	   No ring around the circles. A 1px stroke in the page background was
+	   separating them, but on a dark theme that stroke is near-black, and at
+	   every overlap it read as a slot of empty page cutting through the color.
+	   Colors meet flush here like everywhere else; where two neighbours are
+	   close enough to merge, that is the palette telling the truth. */
+	margin-left: calc(var(--dot) * -0.3);
+}
+
+.wall--circle .swatch:first-child {
+	margin-left: 0;
+}
+
+/* --- bars: one color per full-width line ---
+ *
+ * A palette is a stack of lines, one per color, meeting flush. Palettes are
+ * told apart by the blank between them, not by any rule or border.
+ *
+ * Width is the same for everything here, so count is carried by height
+ * instead: a 6-color palette is three times the block a 2-color one is. The
+ * box view's premise, rotated ninety degrees.
+ */
+
+.wall--bar {
+	--bar: 20px;
+
+	flex-direction: column;
+	flex-wrap: nowrap;      /* gap comes from .wall — it IS the separator here */
+}
+
+.wall--bar .card {
+	flex-direction: column;
+	width: 100%;
+	height: auto;
+}
+
+.wall--bar .swatch {
+	flex: none;
+	width: 100%;
+	height: var(--bar);
+}
+
+@media (max-width: 680px) {
+	/* A phone cannot take the desktop dot: with a 30% overlap a 6-color
+	   palette spans 4.5 dots, so anything larger than this pushes the widest
+	   palettes off-screen and the page scrolls sideways. Derived rather than
+	   guessed, the same way --unit is on mobile. */
+	.wall--circle { --dot: calc((100vw - var(--s4) * 2) / 4.5); }
+	.wall--bar { --bar: 16px; }
+}
+
+/* Hover changes the cursor and nothing else. No lift, no scale: on a screen
+   built for comparing colors, movement is interference. */
+
+/* A selected swatch is marked with two inset hairlines, white then black, so
+   the mark is legible on any color without introducing a hue of its own. */
+.swatch.is-selected {
+	box-shadow: inset 0 0 0 2px #fff, inset 0 0 0 4px #000;
+}
+
+.chip {
+	display: inline-block;
+	width: var(--s5);
+	height: var(--s5);
+	border-radius: var(--r-swatch);
+	border: 1px solid var(--line);
+	flex: none;
+}
+
+.chip--lg {
+	width: var(--s7);
+	height: var(--s7);
+}
+
+.empty {
+	color: var(--text-muted);
+	font-size: var(--t2);
+	max-width: 46ch;
+}
+
+.empty a {
+	color: var(--text);
+	text-decoration: underline;
+	text-underline-offset: 2px;
+}
+
+
+/* ================= controls ================= */
+
+.btn {
+	display: inline-block;
+	padding: var(--s2) var(--s4);
+	font-size: var(--t2);
+	line-height: var(--lh-label);
+
+	border: 1px solid var(--line-strong);
+	border-radius: var(--r-ui);
+	background: none;
+	color: var(--text);
+}
+
+/* Emphasis by inversion, not by hue. */
+.btn--primary {
+	background: var(--text);
+	color: var(--bg);
+	border-color: var(--text);
+}
+
+.btn--quiet {
+	border-color: var(--line);
+	color: var(--text-muted);
+}
+
+/* Disabled reads as a weaker line and weaker text, not as reduced opacity —
+   opacity fades a real color into a fake one. */
+.btn:disabled {
+	color: var(--text-muted);
+	border-color: var(--line);
+	cursor: not-allowed;
+}
+
+.segmented {
+	display: flex;
+	border: 1px solid var(--line);
+	border-radius: var(--r-ui);
+	overflow: hidden;
+}
+
+.seg {
+	padding: var(--s2) var(--s3);
+	font-size: var(--t2);
+	color: var(--text-muted);
+	border-right: 1px solid var(--line);
+}
+
+.seg:last-child {
+	border-right: 0;
+}
+
+.seg[aria-pressed='true'] {
+	background: var(--text);
+	color: var(--bg);
+}
+
+.input {
+	padding: var(--s1) var(--s2);
+	border: 1px solid var(--line-strong);
+	border-radius: var(--r-ui);
+	background: var(--bg);
+	font-size: var(--t2);
+}
+
+.input--sm {
+	width: 8ch;
+	text-align: right;
+}
+
+
+/* ---------- sliders ----------
+   The track carries a real color gradient, painted inline by make.js. That is
+   data visualization — it shows the consequence of moving the handle — so it
+   is the one place chromatic pixels are not user data. The handle itself stays
+   achromatic: a white bar outlined in black, legible over any track color. */
+
+.slider {
+	appearance: none;
+	-webkit-appearance: none;
+	width: 100%;
+	height: var(--s5);
+
+	border: 1px solid var(--line);
+	border-radius: var(--r-ui);
+	background: var(--surface-sunk);
+	cursor: pointer;
+}
+
+.slider--plain {
+	height: var(--s4);
+}
+
+.slider::-webkit-slider-thumb {
+	appearance: none;
+	-webkit-appearance: none;
+	width: var(--s3);
+	height: var(--s5);
+	background: #fff;
+	border: 1px solid #000;
+	border-radius: var(--r-ui);
+}
+
+.slider::-moz-range-thumb {
+	width: var(--s3);
+	height: var(--s5);
+	background: #fff;
+	border: 1px solid #000;
+	border-radius: var(--r-ui);
+}
+
+.slider--plain::-webkit-slider-thumb { height: var(--s4); }
+.slider--plain::-moz-range-thumb { height: var(--s4); }
+
+
+/* ================= panels ================= */
+
+.panel {
+	display: flex;
+	flex-direction: column;
+	gap: var(--s4);
+
+	padding: var(--s4);
+	border: 1px solid var(--line);
+	border-radius: var(--r-ui);
+	background: var(--surface);
+}
+
+.panel__preview {
+	display: flex;
+	gap: var(--s4);
+	align-items: flex-start;
+}
+
+.preview-swatch {
+	width: var(--s8);
+	height: var(--s8);
+	border-radius: var(--r-swatch);
+	border: 1px solid var(--line);
+	flex: none;
+}
+
+.panel__meta {
+	display: flex;
+	flex-direction: column;
+	gap: var(--s2);
+}
+
+.field {
+	display: flex;
+	gap: var(--s2);
+	align-items: center;
+}
+
+/* A label-and-input pair with its submit button on the same line, wrapping
+   together on narrow screens rather than stranding the button. */
+.field-row {
+	display: flex;
+	gap: var(--s3);
+	align-items: center;
+	flex-wrap: wrap;
+}
+
+.sliders {
+	display: flex;
+	flex-direction: column;
+	gap: var(--s3);
+}
+
+.slider-row {
+	display: grid;
+	grid-template-columns: 7em 1fr auto;
+	gap: var(--s3);
+	align-items: center;
+}
+
+.readouts {
+	display: flex;
+	flex-direction: column;
+	gap: var(--s1);
+}
+
+/* The commit row of a panel. Both modes end this way, so Add is always the
+   last thing under the controls that produced the color. */
+.panel__actions {
+	display: flex;
+	gap: var(--s3);
+	align-items: center;
+	flex-wrap: wrap;
+
+	padding-top: var(--s3);
+	border-top: 1px solid var(--line);
+}
+
+
+/* ================= make screen ================= */
+
+.make {
+	gap: var(--s5);
+}
+
+.tray-area {
+	display: flex;
+	flex-direction: column;
+	gap: var(--s3);
+	align-items: flex-start;
+}
+
+/* Same unit and height as a gallery card, so what is in the tray is literally
+   what will hang on the wall. One of only two animations in the project: the
+   tray grows one unit to the right as a color is added. */
+.tray {
+	display: flex;
+	width: calc(var(--n) * var(--unit));
+	max-width: 100%;         /* same cap as a card, for the same reason */
+	height: var(--card-height);
+	border-radius: var(--r-swatch);
+	overflow: hidden;
+
+	transition: width 120ms ease-out;
+}
+
+.tray-actions {
+	display: flex;
+	gap: var(--s3);
+	align-items: center;
+}
+
+/* Always visible. Most of what makes a palette work is explained by these
+   three numbers, and no other tool shows them, so they are never collapsed. */
+.spread {
+	display: flex;
+	flex-wrap: wrap;
+	gap: var(--s6);
+
+	padding: var(--s3) 0;
+	border-block: 1px solid var(--line);
+}
+
+.spread__item {
+	display: flex;
+	flex-direction: column;
+	gap: var(--s1);
+}
+
+/* Modes are not equal-weight tabs: precision is the base surface and the
+   others are called up briefly, so the off state stays quiet. */
+.modes {
+	display: flex;
+	gap: var(--s2);
+}
+
+.mode {
+	padding: var(--s2) var(--s4);
+	font-size: var(--t2);
+	color: var(--text-muted);
+	border: 1px solid var(--line);
+	border-radius: var(--r-ui);
+}
+
+.mode.is-on {
+	color: var(--text);
+	font-weight: var(--w-medium);
+	border-color: var(--line-strong);
+	background: var(--surface);
+}
+
+/* ================= image mode ================= */
+
+.file-row {
+	display: flex;
+	gap: var(--s3);
+	align-items: center;
+	flex-wrap: wrap;
+}
+
+/* The stage must be exactly as wide as the canvas, or the percentage-positioned
+   overlay spreads across empty space beside the image.
+
+   `display: inline-block` does NOT do it here: #imagePanel is a flex container,
+   and flex blockifies its children, so the value is thrown away. What actually
+   shrinks a flex item to its content is align-self — the default is stretch,
+   which is what was filling the column.
+
+   The border lives here, not on the canvas: an absolutely positioned child
+   resolves against the PADDING box, so with the border on the stage the overlay
+   starts where the image pixels start. On the canvas it would offset every
+   point by the border width. */
+.stage {
+	position: relative;
+	display: none;
+	align-self: center;
+	width: fit-content;
+	max-width: 100%;
+	line-height: 0;          /* kills the inline-gap under the canvas */
+	border: 1px solid var(--line);
+}
+
+.stage.has-image {
+	display: block;
+}
+
+.stage canvas#canvas {
+	display: block;
+	max-width: 100%;
+	height: auto;
+	cursor: crosshair;
+}
+
+/* Size comes from JS, measured off the canvas itself — see syncOverlay() in
+   extract.js. Anchoring to the canvas rather than to the stage means no
+   ancestor's layout can knock the markers out of alignment again. */
+.candidates {
+	position: absolute;
+	top: 0;
+	left: 0;
+	pointer-events: none;
+}
+
+/* A hint layer, not a button: these mark where a color could come from and
+   wait. The ring is white over black so it reads on any photo. */
+.candidate {
+	position: absolute;
+	width: var(--s5);
+	height: var(--s5);
+	transform: translate(-50%, -50%);
+
+	border: 2px solid #fff;
+	border-radius: 50%;
+	box-shadow: 0 0 0 1px #000;
+	pointer-events: auto;
+}
+
+/* The taken one reads as taken: it grows, and the ring inverts to black over
+   white. Size and inversion, no hue — the dot's fill is the color itself and
+   must not compete with a state color. */
+.candidate.is-picked {
+	width: var(--s6);
+	height: var(--s6);
+	border-color: #000;
+	box-shadow: 0 0 0 2px #fff;
+}
+
+/* Where the color actually came from. A crosshair rather than a filled dot,
+   because a filled mark would cover the pixels it is pointing at. */
+.pick-marker {
+	position: absolute;
+	width: var(--s6);
+	height: var(--s6);
+	transform: translate(-50%, -50%);
+	pointer-events: none;
+
+	background:
+		linear-gradient(#fff, #fff) center / 100% 1px no-repeat,
+		linear-gradient(#fff, #fff) center / 1px 100% no-repeat;
+	outline: 1px solid #000;
+	outline-offset: -1px;
+}
+
+.picked {
+	display: flex;
+	gap: var(--s3);
+	align-items: center;
+	flex-wrap: wrap;
+
+	padding-top: var(--s3);
+	border-top: 1px solid var(--line);
+}
+
+.picked__meta {
+	display: flex;
+	flex-direction: column;
+	gap: var(--s1);
+	margin-right: auto;
+}
+
+.loupe {
+	position: absolute;
+	top: 0;
+	left: 0;
+	display: none;
+
+	width: var(--s8);
+	height: var(--s8);
+	margin: calc(var(--s8) / -2);
+
+	border: 1px solid var(--line-strong);
+	pointer-events: none;
+}
+
+.loupe.is-on {
+	display: block;
+}
+
+
+/* ================= detail ================= */
+
+.detail {
+	gap: var(--s5);
+}
+
+/* A fixed mid gray, identical in both themes. It is a reference surface for
+   judging color, so it must not shift when the theme does. */
+.neutral-field {
+	display: flex;
+	flex-direction: column;
+	gap: var(--s3);
+
+	padding: var(--s6);
+	background: var(--neutral-field);
+	border-radius: var(--r-ui);
+}
+
+.neutral-field .label {
+	color: #1a1a1a;
+}
+
+.bar-large {
+	display: flex;
+	width: 100%;
+	height: calc(var(--card-height) * 2);
+	border-radius: var(--r-swatch);
+	overflow: hidden;
+}
+
+/* Two equal columns. 1fr 1fr rather than auto, so the halves stay halves no
+   matter how long a hex list or a code block gets — the split is a layout
+   decision, not something the content negotiates. */
+.split {
+	display: grid;
+	grid-template-columns: 1fr 1fr;
+	gap: var(--s4);
+}
+
+/* Grid items default to min-width: auto, which refuses to shrink below their
+   content — the <pre> would push its column wider than half instead of
+   scrolling. This is what makes overflow-x on .code actually work. */
+.split > * {
+	min-width: 0;
+}
+
+@media (max-width: 680px) {
+	.split {
+		grid-template-columns: 1fr;
+	}
+}
+
+.color-list {
+	display: flex;
+	flex-direction: column;
+	gap: var(--s2);
+}
+
+.color-row {
+	display: grid;
+	grid-template-columns: auto 1fr auto;
+	gap: var(--s4);
+	align-items: center;
+
+	padding-bottom: var(--s2);
+	border-bottom: 1px solid var(--line);
+}
+
+.copy-row {
+	display: flex;
+	gap: var(--s2);
+	align-items: center;
+	flex-wrap: wrap;
+}
+
+.code {
+	margin: 0;
+	padding: var(--s3);
+	font-size: var(--t1);
+	line-height: var(--lh-body);
+
+	background: var(--surface-sunk);
+	border-radius: var(--r-ui);
+	overflow-x: auto;
+	white-space: pre;
+}
+
+/* Absorbs the slack, so the count text growing from "searching…" to
+   "3 other palettes contain #c7c19d" shrinks this instead of pushing the
+   control beside it onto another line. */
+.match-head {
+	display: flex;
+	gap: var(--s3);
+	align-items: center;
+	flex: 1 1 auto;
+	min-width: 0;
+}
+
+/* Fixed tracks, not flexible ones. With flex, the slider took whatever the
+   value text left over — so switching from "default" to "exactly this color"
+   made the track shorter under the user's own cursor. Grid columns are set by
+   the layout, so the wording cannot reach the control. */
+.similarity {
+	display: grid;
+	grid-template-columns: auto 12rem 18ch;
+	gap: var(--s3);
+	align-items: center;
+	flex: none;
+}
+
+.similarity .slider {
+	width: 100%;
+}
+
+@media (max-width: 680px) {
+	.similarity {
+		grid-template-columns: auto 1fr;
+		grid-template-areas: 'name track' 'value value';
+	}
+	.similarity > :nth-child(3) { grid-area: value; }
+}
+
+/* The second of the two animations: the gallery narrowing as a filter applies.
+   Under 200ms, and disabled entirely under prefers-reduced-motion by base.css. */
+#matches .card {
+	animation: appear 160ms ease-out;
+}
+
+@keyframes appear {
+	from { opacity: 0; }
+	to { opacity: 1; }
+}
+
+
+/* ================= test page ================= */
+
+.test-results {
+	white-space: pre-wrap;
+	font-size: var(--t1);
+	padding: var(--s4);
+	border: 1px solid var(--line);
+	border-radius: var(--r-ui);
+	background: var(--surface);
+}
+
+.test-results[data-state='fail'] {
+	border-color: var(--text);
+	border-width: 2px;
+}

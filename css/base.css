@@ -1,0 +1,134 @@
+/* base.css — reset, typography, page layout. Nothing component-specific. */
+
+/* ---------- reset ---------- */
+
+*,
+*::before,
+*::after {
+	box-sizing: border-box;
+}
+
+body, h1, h2, h3, h4, p, figure, blockquote, dl, dd, ul, ol {
+	margin: 0;
+	padding: 0;
+}
+
+h1, h2, h3, h4 {
+	font-size: inherit;
+	font-weight: inherit;
+}
+
+ul, ol {
+	list-style: none;
+}
+
+a {
+	color: inherit;
+	text-decoration: none;
+}
+
+img, canvas, svg {
+	display: block;
+	max-width: 100%;
+}
+
+button, input, select, textarea {
+	font: inherit;
+	color: inherit;
+	background: none;
+	border: 0;
+	border-radius: 0;
+}
+
+button {
+	cursor: pointer;
+}
+
+
+/* ---------- page ---------- */
+
+html {
+	/* tells the browser to theme scrollbars and form controls with the tokens above */
+	color-scheme: light dark;
+	-webkit-text-size-adjust: 100%;
+
+	/* Keeps the scrollbar's width reserved whether or not one is showing. A
+	   page that grows past the viewport otherwise narrows by the scrollbar
+	   width the instant it does, and everything on screen jumps sideways. */
+	scrollbar-gutter: stable;
+}
+
+body {
+	background: var(--bg);
+	color: var(--text);
+	font-family: var(--font-ui);
+	font-size: var(--t3);
+	font-weight: var(--w-regular);
+	line-height: var(--lh-body);
+	padding: var(--page-pad);
+}
+
+
+/* ---------- type roles ---------- */
+
+/* every number the user reads or compares: hex, OKLCh values, spread, catalog no. */
+.num {
+	font-family: var(--font-num);
+	font-variant-numeric: tabular-nums;
+}
+
+.label {
+	font-size: var(--t2);
+	line-height: var(--lh-label);
+	color: var(--text-muted);
+}
+
+.title {
+	font-size: var(--t4);
+	font-weight: var(--w-medium);
+	line-height: var(--lh-label);
+}
+
+
+/* ---------- utilities ---------- */
+
+/* Both of these need !important, and for the same reason: an author rule like
+   `.panel { display: flex }` or `main { display: flex }` outranks the browser's
+   own [hidden] rule and any later display value, so "hide this" would silently
+   lose. Their entire job is to beat a component's display. */
+.is-hidden,
+[hidden] {
+	display: none !important;
+}
+
+/* present to screen readers, absent on screen — used for the file input,
+   which is triggered by its own <label> styled as a button */
+.visually-hidden {
+	position: absolute;
+	width: 1px;
+	height: 1px;
+	margin: -1px;
+	padding: 0;
+	overflow: hidden;
+	clip-path: inset(50%);
+	white-space: nowrap;
+}
+
+
+/* ---------- quality floor ---------- */
+
+:focus-visible {
+	outline: 2px solid var(--text);
+	outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+	*,
+	*::before,
+	*::after {
+		animation-duration: 0.01ms !important;
+		animation-iteration-count: 1 !important;
+		transition-duration: 0.01ms !important;
+		scroll-behavior: auto !important;
+	}
+}

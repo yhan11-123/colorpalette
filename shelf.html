@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+
+	<title>Shelf — Color Archive</title>
+
+	<link rel="stylesheet" href="css/tokens.css">
+	<link rel="stylesheet" href="css/base.css">
+	<link rel="stylesheet" href="css/components.css">
+
+	<!-- A classic script, deliberately not a module. Modules are blocked on
+	     file://, so nothing that reports the problem can itself be a module —
+	     the page would just stay blank. This one still runs there. -->
+	<script>
+		if (location.protocol === 'file:') {
+			addEventListener('DOMContentLoaded', function () {
+				document.body.insertAdjacentHTML('afterbegin',
+					'<p class="banner">Opened straight from the file system, so none of ' +
+					'the JavaScript ran \u2014 ES modules are blocked on file://. ' +
+					'Right-click index.html in VS Code and choose <b>Open with Live Server</b>.</p>');
+			});
+		}
+	</script>
+
+	<script type="module" src="js/shelf.js"></script>
+</head>
+
+<body>
+
+	<header class="topbar">
+		<a class="brand" href="index.html">Color Archive</a>
+		<nav class="nav">
+			<a href="index.html">Make</a>
+			<a href="archive.html">Archive</a>
+			<a href="shelf.html" aria-current="page">Shelf</a>
+			<a href="account.html">Account</a>
+		</nav>
+	</header>
+
+	<main>
+
+		<div class="bar">
+			<div class="segmented" role="group" aria-label="Shelf tab">
+				<button type="button" class="seg" data-tab="made" aria-pressed="true">Made</button>
+				<button type="button" class="seg" data-tab="saved" aria-pressed="false">Saved</button>
+			</div>
+
+			<p class="label num" id="count" aria-live="polite"></p>
+		</div>
+
+		<div class="wall" id="wall"></div>
+
+	</main>
+
+</body>
+</html>

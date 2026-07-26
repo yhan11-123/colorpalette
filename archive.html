@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+
+	<title>Archive — Color Archive</title>
+
+	<link rel="stylesheet" href="css/tokens.css">
+	<link rel="stylesheet" href="css/base.css">
+	<link rel="stylesheet" href="css/components.css">
+
+	<!-- A classic script, deliberately not a module. Modules are blocked on
+	     file://, so nothing that reports the problem can itself be a module —
+	     the page would just stay blank. This one still runs there. -->
+	<script>
+		if (location.protocol === 'file:') {
+			addEventListener('DOMContentLoaded', function () {
+				document.body.insertAdjacentHTML('afterbegin',
+					'<p class="banner">Opened straight from the file system, so none of ' +
+					'the JavaScript ran \u2014 ES modules are blocked on file://. ' +
+					'Right-click index.html in VS Code and choose <b>Open with Live Server</b>.</p>');
+			});
+		}
+	</script>
+
+	<script type="module" src="js/archive.js"></script>
+</head>
+
+<body>
+
+	<header class="topbar">
+		<a class="brand" href="index.html">Color Archive</a>
+		<nav class="nav">
+			<a href="index.html">Make</a>
+			<a href="archive.html" aria-current="page">Archive</a>
+			<a href="shelf.html">Shelf</a>
+			<a href="account.html">Account</a>
+		</nav>
+	</header>
+
+	<main>
+
+		<div class="bar">
+			<!-- Same palettes, three ways of looking. Not a filter: nothing is
+			     hidden, so the archive never gets smaller by touching this. -->
+			<div class="segmented" role="group" aria-label="View">
+				<button type="button" class="seg" data-view="box" aria-pressed="true">Boxes</button>
+				<button type="button" class="seg" data-view="circle" aria-pressed="false">Circles</button>
+				<button type="button" class="seg" data-view="bar" aria-pressed="false">Bars</button>
+			</div>
+
+			<p class="label num" id="count" aria-live="polite"></p>
+		</div>
+
+		<div class="wall" id="wall"></div>
+
+	</main>
+
+</body>
+</html>

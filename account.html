@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+
+	<title>Account — Color Archive</title>
+
+	<link rel="stylesheet" href="css/tokens.css">
+	<link rel="stylesheet" href="css/base.css">
+	<link rel="stylesheet" href="css/components.css">
+
+	<!-- A classic script, deliberately not a module. Modules are blocked on
+	     file://, so nothing that reports the problem can itself be a module —
+	     the page would just stay blank. This one still runs there. -->
+	<script>
+		if (location.protocol === 'file:') {
+			addEventListener('DOMContentLoaded', function () {
+				document.body.insertAdjacentHTML('afterbegin',
+					'<p class="banner">Opened straight from the file system, so none of ' +
+					'the JavaScript ran \u2014 ES modules are blocked on file://. ' +
+					'Right-click index.html in VS Code and choose <b>Open with Live Server</b>.</p>');
+			});
+		}
+	</script>
+
+	<script type="module" src="js/account.js"></script>
+</head>
+
+<body>
+
+	<header class="topbar">
+		<a class="brand" href="index.html">Color Archive</a>
+		<nav class="nav">
+			<a href="index.html">Make</a>
+			<a href="archive.html">Archive</a>
+			<a href="shelf.html">Shelf</a>
+			<a href="account.html" aria-current="page">Account</a>
+		</nav>
+	</header>
+
+	<main>
+
+		<h1 class="title">Account</h1>
+
+		<!-- State is written here by js/account.js. An account is never required
+		     to make or register a palette; it exists so a shelf can be reached
+		     from a second device. -->
+		<section class="panel" id="state">
+			<p class="label" id="status">…</p>
+		</section>
+
+		<!-- ---------- attach an email to this browser's work ---------- -->
+		<section class="panel" id="linkPanel" hidden>
+			<p class="label">Keep what you have made</p>
+			<p class="empty">
+				This browser already has an anonymous account holding your palettes and
+				your shelf. Add an email and it becomes yours to sign back into —
+				nothing is transferred, nothing is lost.
+			</p>
+
+			<form class="field-row" id="linkForm">
+				<label class="field">
+					<span class="label">Email</span>
+					<input class="input num" id="linkEmail" type="email" required
+					       autocomplete="email" spellcheck="false" size="28">
+				</label>
+				<button type="submit" class="btn btn--primary">Send link</button>
+			</form>
+
+			<p class="label" id="linkMessage" aria-live="polite"></p>
+		</section>
+
+		<!-- ---------- sign in as somebody else ---------- -->
+		<section class="panel" id="signInPanel" hidden>
+			<p class="label">Sign in to an existing account</p>
+			<p class="empty" id="signInWarning">
+				For an account made on another device. Palettes made anonymously in
+				this browser stay behind under the anonymous account.
+			</p>
+
+			<form class="field-row" id="signInForm">
+				<label class="field">
+					<span class="label">Email</span>
+					<input class="input num" id="signInEmail" type="email" required
+					       autocomplete="email" spellcheck="false" size="28">
+				</label>
+				<button type="submit" class="btn">Send link</button>
+			</form>
+
+			<p class="label" id="signInMessage" aria-live="polite"></p>
+		</section>
+
+		<!-- ---------- signed in ---------- -->
+		<section class="panel" id="outPanel" hidden>
+			<p class="empty">
+				Signing out returns this browser to a fresh anonymous account, so you
+				can keep making without signing in again.
+			</p>
+			<div class="panel__actions">
+				<button type="button" class="btn" id="signOut">Sign out</button>
+			</div>
+		</section>
+
+	</main>
+
+</body>
+</html>

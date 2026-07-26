@@ -1,0 +1,13 @@
+# macOS. This project lives on an exFAT volume, which cannot store resource
+# forks natively, so the Finder writes a ._name sidecar next to every file.
+# There are dozens of them and none belong in history.
+._*
+.DS_Store
+.Spotlight-V100
+.Trashes
+
+# editor
+.vscode/
+
+# No node_modules by design — this project has no build step and no npm.
+# Libraries come straight from an ESM CDN.

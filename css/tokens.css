@@ -1,0 +1,72 @@
+/* tokens.css — design system variables. No selectors but :root, no rules but custom properties. */
+
+:root {
+	/* achromatic — zero hue */
+	--bg:            #ffffff;
+	--surface:       #f5f5f5;
+	--surface-sunk:  #ebebeb;
+	--line:          #e0e0e0;
+	--line-strong:   #c2c2c2;
+	--text:          #171717;
+	--text-muted:    #757575;
+
+	/* neutral field for judging color accurately (large view on detail) */
+	--neutral-field: #808080;
+
+	/* type */
+	--font-ui:   ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+	--font-num:  "JetBrains Mono", ui-monospace, monospace;
+
+	/* type scale — four sizes, two weights, no more */
+	--t1: 11px;
+	--t2: 13px;
+	--t3: 15px;
+	--t4: 20px;
+
+	--w-regular: 400;
+	--w-medium:  500;
+
+	--lh-body:  1.6;
+	--lh-label: 1.2;
+
+	/* spacing — multiples of 4 only */
+	--s1: 4px;  --s2: 8px;  --s3: 12px; --s4: 16px;
+	--s5: 24px; --s6: 32px; --s7: 48px; --s8: 64px;
+
+	/* corners */
+	--r-swatch: 0;
+	--r-ui:     2px;
+
+	/* palette card unit width — one color is exactly one unit */
+	--unit:        96px;
+
+	/* The tray and the large view read this too, so a card, the thing being
+	   built, and the thing on the detail page can never disagree in shape. */
+	--card-height: 166px;
+
+	/* page gutter; the mobile unit is derived from it */
+	--page-pad: var(--s5);
+}
+
+/* On a phone a 6-color card must still fit, so the unit becomes a sixth of the
+   usable width. Every ratio holds: a 2-color card is a third of a 6-color one,
+   and a color is still exactly one unit wide. */
+@media (max-width: 680px) {
+	:root {
+		--page-pad: var(--s4);
+		--unit: calc((100vw - var(--s4) * 2) / 6);
+		--card-height: 125px;
+	}
+}
+
+@media (prefers-color-scheme: dark) {
+	:root {
+		--bg:           #0d0d0d;
+		--surface:      #1a1a1a;
+		--surface-sunk: #242424;
+		--line:         #2e2e2e;
+		--line-strong:  #4a4a4a;
+		--text:         #f0f0f0;
+		--text-muted:   #8f8f8f;
+	}
+}

@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+
+	<title>Palette — Color Archive</title>
+
+	<link rel="stylesheet" href="css/tokens.css">
+	<link rel="stylesheet" href="css/base.css">
+	<link rel="stylesheet" href="css/components.css">
+
+	<!-- A classic script, deliberately not a module. Modules are blocked on
+	     file://, so nothing that reports the problem can itself be a module —
+	     the page would just stay blank. This one still runs there. -->
+	<script>
+		if (location.protocol === 'file:') {
+			addEventListener('DOMContentLoaded', function () {
+				document.body.insertAdjacentHTML('afterbegin',
+					'<p class="banner">Opened straight from the file system, so none of ' +
+					'the JavaScript ran \u2014 ES modules are blocked on file://. ' +
+					'Right-click index.html in VS Code and choose <b>Open with Live Server</b>.</p>');
+			});
+		}
+	</script>
+
+	<script type="module" src="js/palette.js"></script>
+</head>
+
+<body>
+
+	<header class="topbar">
+		<a class="brand" href="index.html">Color Archive</a>
+		<nav class="nav">
+			<a href="index.html">Make</a>
+			<a href="archive.html">Archive</a>
+			<a href="shelf.html">Shelf</a>
+			<a href="account.html">Account</a>
+		</nav>
+	</header>
+
+	<main class="detail" id="detail" hidden>
+
+		<div class="bar">
+			<h1 class="title num" id="catalog">—</h1>
+			<button type="button" class="btn" id="save">Save</button>
+		</div>
+
+		<!-- Shown large on a fixed neutral field. In small patches a color is
+		     contaminated by its neighbours and reads as something it is not,
+		     so there has to be a way to see it at size. -->
+		<section class="neutral-field">
+			<div class="bar-large" id="large"></div>
+		</section>
+
+		<!-- Two halves of the same job: take one color, or take them all.
+		     Side by side so the choice is visible without scrolling between. -->
+		<div class="split">
+
+			<!-- ---------- per color ---------- -->
+			<section class="panel">
+				<p class="label">Colors</p>
+				<div id="colors" class="color-list"></div>
+			</section>
+
+			<!-- ---------- copy the whole palette ---------- -->
+			<section class="panel">
+				<p class="label">Copy the palette</p>
+				<div class="copy-row">
+					<button type="button" class="btn btn--quiet" data-format="array">Array</button>
+					<button type="button" class="btn btn--quiet" data-format="css">CSS variables</button>
+					<button type="button" class="btn btn--quiet" data-format="tailwind">Tailwind</button>
+					<button type="button" class="btn btn--quiet" data-format="oklch">oklch()</button>
+					<span class="label" id="copied" aria-live="polite"></span>
+				</div>
+				<pre class="code num" id="preview"></pre>
+			</section>
+
+		</div>
+
+		<!-- ---------- color filter: the heart of the product ----------
+		     Always on the page, never revealed. Showing and hiding it made the
+		     document jump the moment a color was clicked; standing waiting with
+		     an invitation costs one panel of height and nothing moves. -->
+		<section class="panel" id="matchPanel">
+
+			<div class="bar">
+				<div class="match-head">
+					<span class="chip chip--lg is-hidden" id="matchChip"></span>
+					<p class="label" id="matchCount">Click a color above to see every other palette that contains it.</p>
+				</div>
+
+				<label class="similarity">
+					<span class="label">Similarity</span>
+					<input type="range" id="threshold" class="slider slider--plain"
+					       min="0" max="2" step="1" value="1">
+					<span class="label num" id="thresholdLabel">default</span>
+				</label>
+			</div>
+
+			<div class="wall" id="matches"></div>
+		</section>
+
+	</main>
+
+	<p class="empty" id="missing" hidden>
+		No palette with that id. <a href="archive.html">Back to the archive</a>.
+	</p>
+
+</body>
+</html>
