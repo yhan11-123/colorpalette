@@ -722,32 +722,60 @@ main {
 	color: #1a1a1a;
 }
 
+/* Stacked, one color per full-width band. Beside a column of text this reads
+   better than a horizontal strip, and it is the shape that scales: color count
+   has no ceiling, so a fixed total height would make each band thinner the
+   more colors a palette has — the opposite of showing a color at size.
+   A fixed band height instead means the block simply grows. */
 .bar-large {
+	--band: 88px;
+
 	display: flex;
+	flex-direction: column;
 	width: 100%;
-	height: calc(var(--card-height) * 2);
 	border-radius: var(--r-swatch);
 	overflow: hidden;
 }
 
-/* Two equal columns. 1fr 1fr rather than auto, so the halves stay halves no
-   matter how long a hex list or a code block gets — the split is a layout
-   decision, not something the content negotiates. */
-.split {
+.bar-large .swatch {
+	flex: none;
+	height: var(--band);
+}
+
+@media (max-width: 900px) {
+	.bar-large { --band: 64px; }
+}
+
+/* Palette left, everything written about it right. 1fr 1fr rather than auto,
+   so the halves stay halves no matter how long a hex list or a code block
+   gets — the split is a layout decision, not something the content negotiates.
+
+   align-items: start keeps the two columns independent: a long code block on
+   the right must not stretch the neutral field on the left to match it. */
+.detail-split {
 	display: grid;
 	grid-template-columns: 1fr 1fr;
-	gap: var(--s4);
+	gap: var(--s5);
+	align-items: start;
 }
 
 /* Grid items default to min-width: auto, which refuses to shrink below their
    content — the <pre> would push its column wider than half instead of
    scrolling. This is what makes overflow-x on .code actually work. */
-.split > * {
+.detail-split > * {
 	min-width: 0;
 }
 
-@media (max-width: 680px) {
-	.split {
+.detail-info {
+	display: flex;
+	flex-direction: column;
+	gap: var(--s4);
+}
+
+/* Below this the two columns are each too narrow to read a hex in, let alone
+   judge a color. */
+@media (max-width: 900px) {
+	.detail-split {
 		grid-template-columns: 1fr;
 	}
 }

@@ -40,40 +40,46 @@
 
 	<main class="detail" id="detail" hidden>
 
-		<div class="bar">
-			<h1 class="title num" id="catalog">—</h1>
-			<button type="button" class="btn" id="save">Save</button>
-		</div>
+		<!-- The color on the left, everything said about it on the right.
+		     The palette is the subject of this page; the panels beside it are
+		     captions. -->
+		<div class="detail-split">
 
-		<!-- Shown large on a fixed neutral field. In small patches a color is
-		     contaminated by its neighbours and reads as something it is not,
-		     so there has to be a way to see it at size. -->
-		<section class="neutral-field">
-			<div class="bar-large" id="large"></div>
-		</section>
-
-		<!-- Two halves of the same job: take one color, or take them all.
-		     Side by side so the choice is visible without scrolling between. -->
-		<div class="split">
-
-			<!-- ---------- per color ---------- -->
-			<section class="panel">
-				<p class="label">Colors</p>
-				<div id="colors" class="color-list"></div>
+			<!-- Shown large on a fixed neutral field, stacked so each color gets
+			     the full column width. In small patches a color is contaminated
+			     by its neighbours and reads as something it is not, so there has
+			     to be a way to see it at size. -->
+			<section class="neutral-field">
+				<div class="bar-large" id="large"></div>
 			</section>
 
-			<!-- ---------- copy the whole palette ---------- -->
-			<section class="panel">
-				<p class="label">Copy the palette</p>
-				<div class="copy-row">
-					<button type="button" class="btn btn--quiet" data-format="array">Array</button>
-					<button type="button" class="btn btn--quiet" data-format="css">CSS variables</button>
-					<button type="button" class="btn btn--quiet" data-format="tailwind">Tailwind</button>
-					<button type="button" class="btn btn--quiet" data-format="oklch">oklch()</button>
-					<span class="label" id="copied" aria-live="polite"></span>
+			<div class="detail-info">
+
+				<div class="bar">
+					<h1 class="title num" id="catalog">—</h1>
+					<button type="button" class="btn" id="save">Save</button>
 				</div>
-				<pre class="code num" id="preview"></pre>
-			</section>
+
+				<!-- ---------- per color ---------- -->
+				<section class="panel">
+					<p class="label">Colors</p>
+					<div id="colors" class="color-list"></div>
+				</section>
+
+				<!-- ---------- copy the whole palette ---------- -->
+				<section class="panel">
+					<p class="label">Copy the palette</p>
+					<div class="copy-row">
+						<button type="button" class="btn btn--quiet" data-format="array">Array</button>
+						<button type="button" class="btn btn--quiet" data-format="css">CSS variables</button>
+						<button type="button" class="btn btn--quiet" data-format="tailwind">Tailwind</button>
+						<button type="button" class="btn btn--quiet" data-format="oklch">oklch()</button>
+						<span class="label" id="copied" aria-live="polite"></span>
+					</div>
+					<pre class="code num" id="preview"></pre>
+				</section>
+
+			</div>
 
 		</div>
 
