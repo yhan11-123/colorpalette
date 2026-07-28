@@ -19,10 +19,6 @@ import { seedPalettes } from './seed.js';
 
 const MATCH_CAP = 60;   // SPEC §5: a loose threshold matches half the archive
 
-const NO_ACCOUNTS =
-	'Accounts need a database. Put your Supabase URL and anon key in js/config.js first.';
-
-
 // A configuration problem breaks every page the same way, and the pages have
 // no shared place to report it. Without this the symptom is an empty screen
 // and the cause is only in the console — which is a bug report of "nothing
@@ -80,19 +76,6 @@ function createLocalBackend() {
 
 	return {
 		name: 'local',
-
-		// There is no account system without a server. Saying so is better than
-		// a sign-in form that silently does nothing.
-		auth: {
-			supported: false,
-			async current() {
-				return { id: userId, email: null, isAnonymous: true };
-			},
-			async linkEmail() { throw new Error(NO_ACCOUNTS); },
-			async signIn() { throw new Error(NO_ACCOUNTS); },
-			async signOut() { throw new Error(NO_ACCOUNTS); },
-			onChange() { return () => {}; },
-		},
 
 		async listPalettes({ colorCount } = {}) {
 			const rows = all();
@@ -184,11 +167,15 @@ async function createSupabaseBackend() {
 	const { createClient } = await import('https://esm.sh/@supabase/supabase-js@2');
 	const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-	// SPEC §4: anonymous ownership. A row in auth.users exists from the first
-	// visit, so making and saving work with no login wall, and a later signup
-	// promotes this same row instead of orphaning the work.
+	// SPEC §4: anonymous ownership — and here it is the ONLY kind. There is no
+	// sign-in anywhere in this site. A row in auth.users appears on the first
+	// visit and is what owns the palettes you register and the ones you save;
+	// nobody is ever asked for an address, so nothing gates making.
+	//
+	// The cost, accepted deliberately: a shelf belongs to a browser. Clear the
+	// site's data or move to another device and it is gone. Carrying a shelf
+	// between devices is exactly what an account was for.
 	let { data: { session } } = await sb.auth.getSession();
-	let authError = null;
 
 	if (!session) {
 		const { data, error } = await sb.auth.signInAnonymously();
@@ -198,7 +185,6 @@ async function createSupabaseBackend() {
 		// the failure surfaces much later as an RLS violation on the first
 		// insert — a message that names the wrong problem entirely.
 		if (error) {
-			authError = error;
 			announce(
 				`Not signed in — ${error.message}. ` +
 				'Turn on Authentication → Sign In / Providers → Anonymous sign-ins ' +
@@ -241,61 +227,6 @@ async function createSupabaseBackend() {
 
 	return {
 		name: 'supabase',
-
-		auth: {
-			supported: true,
-			error: authError,
-
-			async current() {
-				const { data: { user } } = await sb.auth.getUser();
-				if (!user) return null;
-
-				return {
-					id: user.id,
-					email: user.email ?? null,
-					isAnonymous: user.is_anonymous === true,
-				};
-			},
-
-			// Attaches an email to the user this browser is ALREADY signed in
-			// as. The id does not change, so every palette and save keeps its
-			// owner — this is the upgrade path SPEC §4 asks for.
-			//
-			// Fails if the address belongs to another account: two users cannot
-			// share an email, and silently switching would strand the work.
-			async linkEmail(email) {
-				const { error } = await sb.auth.updateUser(
-					{ email },
-					{ emailRedirectTo: location.href },
-				);
-				if (error) throw error;
-			},
-
-			// Signs in as somebody else. Anything made anonymously in this
-			// browser stays behind under the old id, so the caller warns first.
-			async signIn(email) {
-				const { error } = await sb.auth.signInWithOtp({
-					email,
-					options: { emailRedirectTo: location.href },
-				});
-				if (error) throw error;
-			},
-
-			async signOut() {
-				const { error } = await sb.auth.signOut();
-				if (error) throw error;
-
-				// Never leave the browser with no session at all. Making has no
-				// login wall in front of it, and that has to hold after signing
-				// out as much as before signing in.
-				await sb.auth.signInAnonymously();
-			},
-
-			onChange(callback) {
-				const { data } = sb.auth.onAuthStateChange(callback);
-				return () => data.subscription.unsubscribe();
-			},
-		},
 
 		async listPalettes({ colorCount, limit = 200 } = {}) {
 			let q = sb.from('palettes').select(SELECT)
@@ -412,7 +343,6 @@ const usingSupabase = Boolean(SUPABASE_URL && SUPABASE_ANON_KEY);
 const backend = usingSupabase ? await createSupabaseBackend() : createLocalBackend();
 
 export const backendName = backend.name;
-export const auth = backend.auth;
 
 export const listPalettes = (...args) => backend.listPalettes(...args);
 export const getPalette = (...args) => backend.getPalette(...args);
