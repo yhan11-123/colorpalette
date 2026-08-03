@@ -31,24 +31,29 @@
 
 	<header class="topbar">
 		<a class="brand" href="index.html">Color Archive</a>
-		<nav class="nav">
-			<a href="index.html">Make</a>
-			<a href="archive.html">Archive</a>
-			<a href="shelf.html">Shelf</a>
-		</nav>
+
+		<!-- Grouped, because .topbar is space-between and a third child of its
+		     own would push the nav into the middle of the bar on this page and
+		     nowhere else. -->
+		<div class="topbar-end">
+			<nav class="nav">
+				<a href="index.html">Make</a>
+				<a href="archive.html">Archive</a>
+				<a href="shelf.html">Shelf</a>
+			</nav>
+
+			<!-- A link, not history.back(): this page is arrived at from the
+			     archive, from the make screen and from another palette's
+			     filter, and going back should land in the archive from all
+			     three. Styled as a control rather than a fourth nav item —
+			     it is the way out of this page, not a fourth destination. -->
+			<a class="btn" href="archive.html">← Back to the archive</a>
+		</div>
 	</header>
 
 	<main class="detail" id="detail" hidden>
 
-		<div class="bar">
-			<h1 class="title num" id="catalog">—</h1>
-
-			<!-- A link, not a button, and not history.back(): this page is
-			     arrived at from the archive, from the make screen and from
-			     another palette's filter, and going back should land in the
-			     archive from all three. -->
-			<a class="btn" href="archive.html">← Back to the archive</a>
-		</div>
+		<h1 class="title num" id="catalog">—</h1>
 
 		<!-- Shown only when registering found this palette already catalogued
 		     and sent the maker here instead of writing a second copy. -->

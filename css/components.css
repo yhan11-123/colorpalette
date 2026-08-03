@@ -53,6 +53,19 @@
 	color: var(--text-muted);
 }
 
+/* The right-hand end of the top bar: the nav, and on the detail page a way
+   back out of it. One flex item so that .topbar stays a two-part bar — brand
+   at one end, everything else at the other — however many things are in it.
+
+   A wider gap than the nav's own, so the button reads as separate from the
+   three destinations rather than as a fourth one. */
+.topbar-end {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: baseline;
+	gap: var(--s5);
+}
+
 /* the current page is stated by weight and color, never by an accent */
 .nav a[aria-current='page'] {
 	color: var(--text);
