@@ -42,8 +42,19 @@
 
 		<div class="bar">
 			<h1 class="title num" id="catalog">—</h1>
-			<button type="button" class="btn" id="save">Save</button>
+
+			<!-- A link, not a button, and not history.back(): this page is
+			     arrived at from the archive, from the make screen and from
+			     another palette's filter, and going back should land in the
+			     archive from all three. -->
+			<a class="btn" href="archive.html">← Back to the archive</a>
 		</div>
+
+		<!-- Shown only when registering found this palette already catalogued
+		     and sent the maker here instead of writing a second copy. -->
+		<p class="label" id="twin" hidden>
+			This palette was already in the archive, so nothing new was registered — this is the entry that holds it.
+		</p>
 
 		<!-- The palette and the one panel that takes the whole of it away, side
 		     by side and centred as a pair. Everything in this row is the palette

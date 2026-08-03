@@ -19,6 +19,50 @@ import { seedPalettes } from './seed.js';
 
 const MATCH_CAP = 60;   // SPEC §5: a loose threshold matches half the archive
 
+
+/* ---------- identity ----------
+ *
+ * The archive is a catalog, and a catalog holds one entry per thing. Two
+ * palettes made of the same colors in the same order are not two entries;
+ * they are the same palette registered twice.
+ */
+
+// Order is part of it. The same colors in a different arrangement is a
+// different palette and the site shows it as one, so the sequence is the key
+// rather than the set.
+//
+// Hex, though OKLab is the source of truth everywhere else in this project.
+// Two OKLab triples that differ in the twelfth decimal are the same palette to
+// every eye and every screen, and comparing floats for equality would keep
+// them apart for ever. The hex is what was actually shown.
+function fingerprint(colors) {
+	return colors.map(c => c.hex.toLowerCase()).join(' ');
+}
+
+// The safety net, not the fix. Palettes already in the database from before
+// this rule existed still come back from a query, and this drops the repeats
+// on the way to the screen — but the rows are still there. Removing those is
+// a job for the SQL editor, since nothing here is allowed to delete.
+//
+// The oldest of a set is the one kept. Walls arrive newest first, so the newer
+// twin is the one in hand; the entry that should survive is the one that was
+// in the archive already.
+function dedupe(palettes) {
+	const oldest = new Map();
+
+	for (const palette of palettes) {
+		const key = fingerprint(palette.colors);
+		const kept = oldest.get(key);
+
+		if (!kept || palette.createdAt < kept.createdAt) oldest.set(key, palette);
+	}
+
+	// Filtered rather than rebuilt from the map, so whatever order the caller
+	// asked for survives — the map is only deciding which ids live.
+	const live = new Set([...oldest.values()].map(p => p.id));
+	return palettes.filter(p => live.has(p.id));
+}
+
 // A configuration problem breaks every page the same way, and the pages have
 // no shared place to report it. Without this the symptom is an empty screen
 // and the cause is only in the console — which is a bug report of "nothing
@@ -92,6 +136,15 @@ function createLocalBackend() {
 
 		async createPalette(colors) {
 			const rows = read(LS.palettes, []);
+
+			// Already catalogued → hand back the entry that exists and write
+			// nothing. Registering is asking for the palette to be in the
+			// archive, and it is; a second row would only be a second name for
+			// the same thing.
+			const key = fingerprint(colors);
+			const twin = rows.find(p => fingerprint(p.colors) === key);
+			if (twin) return { ...twin, existing: true };
+
 			const catalogNo = rows.reduce((max, p) => Math.max(max, p.catalogNo), 0) + 1;
 
 			const palette = {
@@ -225,6 +278,29 @@ async function createSupabaseBackend() {
 		};
 	}
 
+	// Everything that starts on the same color, compared in full afterwards.
+	// Position 0 is a cheap first cut and a very selective one, and it is a
+	// single round trip: asking the database for "this list, in this order"
+	// directly would be a condition per position.
+	async function findTwin(colors) {
+		const rows = unwrap(await sb.from('palette_colors')
+			.select('palette_id')
+			.eq('position', 0)
+			.eq('hex', colors[0].hex));
+
+		if (!rows.length) return null;
+
+		const key = fingerprint(colors);
+		const ids = [...new Set(rows.map(r => r.palette_id))];
+
+		const twins = unwrap(await sb.from('palettes').select(SELECT).in('id', ids))
+			.map(toPalette)
+			.filter(p => fingerprint(p.colors) === key)
+			.sort((x, y) => x.createdAt.localeCompare(y.createdAt));
+
+		return twins[0] ?? null;
+	}
+
 	return {
 		name: 'supabase',
 
@@ -259,6 +335,15 @@ async function createSupabaseBackend() {
 					'Sign In / Providers → Anonymous sign-ins in the Supabase dashboard.'
 				);
 			}
+
+			// Already catalogued → hand back the entry that exists and write
+			// nothing. This is a check and then an insert, so two people
+			// registering the same palette in the same second can still both
+			// get through; a unique constraint in the schema is the only thing
+			// that would close that, and it would need a stored fingerprint
+			// column to be unique on.
+			const twin = await findTwin(colors);
+			if (twin) return { ...twin, existing: true };
 
 			const palette = unwrap(await sb.from('palettes')
 				.insert({ color_count: colors.length, owner_id: userId })
@@ -344,7 +429,11 @@ const backend = usingSupabase ? await createSupabaseBackend() : createLocalBacke
 
 export const backendName = backend.name;
 
-export const listPalettes = (...args) => backend.listPalettes(...args);
+// The archive wall, with any repeat already in the database collapsed to the
+// one entry. Only here: the shelf is a personal list and shows what its owner
+// made or saved, and the color filter counts palettes before it fetches them,
+// so hiding one there would leave the count disagreeing with the cards.
+export const listPalettes = async (...args) => dedupe(await backend.listPalettes(...args));
 export const getPalette = (...args) => backend.getPalette(...args);
 export const createPalette = (...args) => backend.createPalette(...args);
 export const listMade = (...args) => backend.listMade(...args);

@@ -374,7 +374,14 @@ ui.register.addEventListener('click', async () => {
 
 	try {
 		const palette = await createPalette(trayColors());
-		location.href = `palette.html?id=${encodeURIComponent(palette.id)}`;
+
+		// The archive already held this exact palette, so nothing was written
+		// and this is the entry that was there. Say so on arrival: landing on
+		// a catalog number from months ago with no explanation reads as the
+		// button having gone wrong.
+		const twin = palette.existing ? '&twin=1' : '';
+
+		location.href = `palette.html?id=${encodeURIComponent(palette.id)}${twin}`;
 	} catch (error) {
 		// Errors say what happened and what to do, and do not apologise.
 		ui.register.textContent = 'Register';

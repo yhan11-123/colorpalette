@@ -3,7 +3,7 @@
 //
 // Give this file the most care. Everything else is scaffolding around it.
 
-import { getPalette, findPalettesByColor, isSaved, toggleSave } from './db.js';
+import { getPalette, findPalettesByColor } from './db.js';
 import { renderSwatches, renderWall } from './card.js';
 import { oklabToOklch } from './color.js';
 
@@ -19,15 +19,20 @@ const el = id => document.querySelector('#' + id);
 
 const ui = {
 	detail: el('detail'), missing: el('missing'),
-	catalog: el('catalog'), save: el('save'),
-	large: el('large'), track: el('track'),
+	catalog: el('catalog'),
+	large: el('large'), track: el('track'), twin: el('twin'),
 	preview: el('preview'), copied: el('copied'),
 	matchChip: el('matchChip'), matchCount: el('matchCount'),
 	matches: el('matches'),
 	threshold: el('threshold'), thresholdLabel: el('thresholdLabel'),
 };
 
-const id = new URLSearchParams(location.search).get('id');
+const params = new URLSearchParams(location.search);
+
+const id = params.get('id');
+
+// Set by the make screen when registering found this palette already here.
+const arrivedAsTwin = params.has('twin');
 
 let palette = null;
 let selected = null;      // index of the color being filtered on
@@ -51,11 +56,11 @@ async function init() {
 	document.title = `Palette ${palette.catalogNo} — Color Archive`;
 
 	ui.catalog.textContent = `No. ${String(palette.catalogNo).padStart(4, '0')}`;
+	ui.twin.hidden = !arrivedAsTwin;
 
 	renderSwatches(ui.large, palette.colors, { interactive: true, codes: true });
 	renderTrack();
 	renderCopy();
-	renderSaveButton();
 
 	ui.large.addEventListener('click', event => {
 		const swatch = event.target.closest('.swatch');
@@ -162,24 +167,6 @@ async function copyText(text, message) {
 	}
 	setTimeout(() => { ui.copied.textContent = ''; }, 2000);
 }
-
-
-/* ---------- save ---------- */
-// Saving, not liking. Private, no public count: a zero next to a palette reads
-// as failure, and in an anonymous archive that is a needless wound.
-
-async function renderSaveButton() {
-	const saved = await isSaved(palette.id);
-	ui.save.textContent = saved ? 'Saved' : 'Save';
-	ui.save.classList.toggle('btn--primary', saved);
-}
-
-ui.save.addEventListener('click', async () => {
-	ui.save.disabled = true;
-	await toggleSave(palette.id);
-	await renderSaveButton();
-	ui.save.disabled = false;
-});
 
 
 /* ---------- the color filter ---------- */
