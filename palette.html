@@ -40,46 +40,49 @@
 
 	<main class="detail" id="detail" hidden>
 
-		<!-- The color on the left, everything said about it on the right.
-		     The palette is the subject of this page; the panels beside it are
-		     captions. -->
-		<div class="detail-split">
+		<div class="bar">
+			<h1 class="title num" id="catalog">—</h1>
+			<button type="button" class="btn" id="save">Save</button>
+		</div>
 
-			<!-- Shown large on a fixed neutral field, stacked so each color gets
-			     the full column width. In small patches a color is contaminated
-			     by its neighbours and reads as something it is not, so there has
-			     to be a way to see it at size. -->
-			<section class="neutral-field">
+		<!-- The palette and the one panel that takes the whole of it away, side
+		     by side and centred as a pair. Everything in this row is the palette
+		     itself; what its colors lead to is the panel below. -->
+		<div class="detail-top">
+
+			<!-- Shown large and stacked, so each color gets the full width
+			     of the block. In small patches a color is contaminated by
+			     its neighbours and reads as something it is not, so there
+			     has to be a way to see it at size.
+
+			     There is no list of hexes beside this any more. Every band
+			     carries its own hex, RGB and CMYK, and opens far enough to
+			     show them when the pointer reaches it — a value belongs to
+			     a color, not to a row in a table next to it. -->
+			<div class="palette-frame">
+
 				<div class="bar-large" id="large"></div>
-			</section>
 
-			<div class="detail-info">
-
-				<div class="bar">
-					<h1 class="title num" id="catalog">—</h1>
-					<button type="button" class="btn" id="save">Save</button>
-				</div>
-
-				<!-- ---------- per color ---------- -->
-				<section class="panel">
-					<p class="label">Colors</p>
-					<div id="colors" class="color-list"></div>
-				</section>
-
-				<!-- ---------- copy the whole palette ---------- -->
-				<section class="panel">
-					<p class="label">Copy the palette</p>
-					<div class="copy-row">
-						<button type="button" class="btn btn--quiet" data-format="array">Array</button>
-						<button type="button" class="btn btn--quiet" data-format="css">CSS variables</button>
-						<button type="button" class="btn btn--quiet" data-format="tailwind">Tailwind</button>
-						<button type="button" class="btn btn--quiet" data-format="oklch">oklch()</button>
-						<span class="label" id="copied" aria-live="polite"></span>
-					</div>
-					<pre class="code num" id="preview"></pre>
-				</section>
+				<!-- The palette's own hexes, circling it. Decorative and
+				     aria-hidden: it is the same handful of values repeated to
+				     fill the track, and every one of them is already announced
+				     by the band it came from. -->
+				<div class="frame-track" id="track" aria-hidden="true"></div>
 
 			</div>
+
+			<!-- ---------- copy the whole palette ---------- -->
+			<section class="panel">
+				<p class="label">Copy the palette</p>
+				<div class="copy-row">
+					<button type="button" class="btn btn--quiet" data-format="array">Array</button>
+					<button type="button" class="btn btn--quiet" data-format="css">CSS variables</button>
+					<button type="button" class="btn btn--quiet" data-format="tailwind">Tailwind</button>
+					<button type="button" class="btn btn--quiet" data-format="oklch">oklch()</button>
+					<span class="label" id="copied" aria-live="polite"></span>
+				</div>
+				<pre class="code num" id="preview"></pre>
+			</section>
 
 		</div>
 
@@ -92,7 +95,7 @@
 			<div class="bar">
 				<div class="match-head">
 					<span class="chip chip--lg is-hidden" id="matchChip"></span>
-					<p class="label" id="matchCount">Click a color above to see every other palette that contains it.</p>
+					<p class="label" id="matchCount">Click a color in the palette to see every other palette that contains it.</p>
 				</div>
 
 				<label class="similarity">

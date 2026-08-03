@@ -121,12 +121,69 @@ function hueSpread(hues) {
 }
 
 
+/* ---------- notations ---------- */
+//
+// The three ways a palette has to be able to leave: hex for the web, RGB for
+// anything else on a screen, CMYK for anything printed.
+//
+// All three are read off the hex rather than out of the OKLab. The hex is what
+// formatHex already brought into sRGB, so these are the numbers for the color
+// actually on the screen. Taken from the OKLab instead, a palette carrying an
+// out-of-gamut color would print an RGB triple no display ever showed.
+
+export function hexToRgb255(hex) {
+	const parsed = parse(hex);
+	if (!parsed) throw new Error(`hexToRgb255: cannot parse "${hex}"`);
+
+	return {
+		r: Math.round(parsed.r * 255),
+		g: Math.round(parsed.g * 255),
+		b: Math.round(parsed.b * 255),
+	};
+}
+
+// The standard sRGB → CMYK formula, in whole percent.
+//
+// Read what this returns as a starting point, not as press values. Real CMYK
+// is defined by an ink set, a paper and an ICC profile, and a web page knows
+// none of the three — so this is an arithmetic restatement of the RGB numbers
+// rather than a color conversion. It is here because a palette that cannot be
+// handed to a printer is only half a palette, not because it is exact.
+export function hexToCmyk(hex) {
+	const { r, g, b } = hexToRgb255(hex);
+
+	const rf = r / 255, gf = g / 255, bf = b / 255;
+	const k = 1 - Math.max(rf, gf, bf);
+
+	// Pure black carries everything in K, and the other three would divide by
+	// zero working it out.
+	if (k === 1) return { c: 0, m: 0, y: 0, k: 100 };
+
+	return {
+		c: Math.round(((1 - rf - k) / (1 - k)) * 100),
+		m: Math.round(((1 - gf - k) / (1 - k)) * 100),
+		y: Math.round(((1 - bf - k) / (1 - k)) * 100),
+		k: Math.round(k * 100),
+	};
+}
+
+
 /* ---------- contrast and gamut ---------- */
 
 // WCAG 2 contrast ratio, 1 to 21. Used to decide whether a hex label
 // printed on a swatch should be black or white.
 export function contrastRatio(hex1, hex2) {
 	return wcagContrast(hex1, hex2);
+}
+
+// Black or white, whichever can be read on this color. Codes printed on the
+// palette sit directly on the user's own color, so the ink has to follow that
+// color rather than the theme — a light theme gives no licence to use dark text
+// on a dark swatch.
+export function inkOn(hex) {
+	return contrastRatio(hex, '#ffffff') >= contrastRatio(hex, '#000000')
+		? '#ffffff'
+		: '#000000';
 }
 
 // True when an OKLCh color has no sRGB equivalent — its chroma is beyond

@@ -7,6 +7,8 @@
 //   height = --card-height            (fixed)
 //   inside = divided equally          (one color is always one unit)
 
+import { hexToRgb255, hexToCmyk, inkOn } from './color.js';
+
 const HEX_FOR_LABEL = 6;
 
 
@@ -19,7 +21,8 @@ const HEX_FOR_LABEL = 6;
 //
 //   interactive — the swatch can be clicked (select a color)
 //   removable   — it also carries a dismiss control, for the tray
-export function renderSwatches(host, colors, { interactive = false, removable = false } = {}) {
+//   codes       — the color's own notations are printed inside it
+export function renderSwatches(host, colors, { interactive = false, removable = false, codes = false } = {}) {
 	host.replaceChildren();
 	host.style.setProperty('--n', colors.length);
 
@@ -39,11 +42,57 @@ export function renderSwatches(host, colors, { interactive = false, removable = 
 			swatch.append(control('swatch__remove', `Remove ${color.hex}`, '×'));
 		} else if (interactive) {
 			swatch.type = 'button';
-			swatch.setAttribute('aria-label', color.hex);
+
+			// The codes are revealed by moving a pointer onto the band, which
+			// is not an act available to everyone. Where they are printed, the
+			// label carries the same three notations rather than the hex alone,
+			// so the palette says the same thing either way it is read.
+			swatch.setAttribute('aria-label',
+				codes ? notations(color.hex).join(', ') : color.hex);
 		}
+
+		if (codes) swatch.append(codeBlock(color.hex));
 
 		host.append(swatch);
 	});
+}
+
+// The codes live on the color rather than in a list beside it, so a number is
+// never one column away from the thing it names — and so reading the palette
+// and reading its values are the same act.
+//
+// Plain text, no controls: this goes inside a swatch that is itself a button
+// on the detail page, and a button inside a button is dropped by the browser.
+function codeBlock(hex) {
+	const box = document.createElement('span');
+	box.className = 'swatch-codes num';
+
+	// Set per swatch, because the surface it has to be legible on is the
+	// user's color and nothing else on the page knows what that is.
+	box.style.color = inkOn(hex);
+
+	box.append(...notations(hex).map(line));
+	return box;
+}
+
+// Hex for the web, RGB for anything else on a screen, CMYK for anything
+// printed. One source for both the printed block and the label, so the two
+// cannot drift apart.
+function notations(hex) {
+	const { r, g, b } = hexToRgb255(hex);
+	const { c, m, y, k } = hexToCmyk(hex);
+
+	return [
+		hex.toUpperCase(),
+		`RGB ${r} ${g} ${b}`,
+		`CMYK ${c} ${m} ${y} ${k}`,
+	];
+}
+
+function line(text) {
+	const span = document.createElement('span');
+	span.textContent = text;
+	return span;
 }
 
 function control(className, label, text) {

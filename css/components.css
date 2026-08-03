@@ -706,24 +706,114 @@ main {
 	gap: var(--s5);
 }
 
-/* A fixed mid gray, identical in both themes. It is a reference surface for
-   judging color, so it must not shift when the theme does. */
-.neutral-field {
-	display: flex;
-	flex-direction: column;
-	gap: var(--s3);
+/* --- the frame, and the border made of text ---
+ *
+ * The palette's border is not a line. It is the palette's own hex codes,
+ * written end to end without a break and travelling round the four edges — top
+ * to the right, right downward, bottom to the left, left upward — so the whole
+ * ring is one stream circling the color it describes.
+ *
+ * Not meant to be read. A code turns on its side down the edges and passes
+ * upside down along the bottom, which is what it costs for the line to be
+ * continuous rather than a row of separate labels.
+ *
+ * The frame is five units wide and the gutter is --s7 on each side, which
+ * leaves the palette itself exactly four: it is still read at the width the
+ * wall showed it at, and the border it has acquired is spare width, not width
+ * taken off the color.
+ */
+.palette-frame {
+	--frame-pad: var(--s7);
 
-	padding: var(--s6);
-	background: var(--neutral-field);
-	border-radius: var(--r-ui);
+	/* One pass of the tape. The tape is around 2,000px of text, so this is a
+	   drift of about 50px a second — slow enough to be a border that moves
+	   rather than a ticker demanding to be read. */
+	--lap: 40s;
+
+	position: relative;
+	padding: var(--frame-pad);
 }
 
-.neutral-field .label {
-	color: #1a1a1a;
+.frame-track {
+	position: absolute;
+	inset: calc(var(--frame-pad) / 2);
+	pointer-events: none;
+}
+
+/* One edge of the ring: a window the height of a line of text, with a tape of
+   codes running through it. The window crops; the tape is what moves. */
+.track-edge {
+	position: absolute;
+	overflow: hidden;
+
+	font-size: var(--t1);
+	line-height: 1.25;
+	white-space: nowrap;
+}
+
+/* The two horizontals take the full width, corners included, and the two
+   verticals start where they end. The four windows tile the ring exactly once
+   — overlapping them would print two streams over each other at each corner. */
+.track-edge--top,
+.track-edge--bottom {
+	left: 0;
+	right: 0;
+	height: 1.25em;
+}
+
+.track-edge--top    { top: 0; }
+.track-edge--bottom { bottom: 0; }
+
+/* vertical-rl turns the line on its side: the codes run top to bottom with the
+   glyphs rotated, which is what makes the stream continue round the corner
+   instead of stacking up as horizontal words. */
+.track-edge--left,
+.track-edge--right {
+	top: 1.25em;
+	bottom: 1.25em;
+	width: 1.25em;
+	writing-mode: vertical-rl;
+}
+
+.track-edge--left  { left: 0; }
+.track-edge--right { right: 0; }
+
+/* The tape carries the same run of codes twice. Moving it by exactly half its
+   own length therefore lands on a frame identical to the one it started from,
+   and the loop has no seam to hide.
+ *
+ * Every edge shifts by the same half-tape over the same --lap, so all four run
+ * at one speed without any of them being told what that speed is. */
+.track-tape {
+	display: inline-block;
+	animation: tape-x var(--lap) linear infinite;
+}
+
+.track-edge--right .track-tape,
+.track-edge--left .track-tape {
+	animation-name: tape-y;
+}
+
+/* Reversed rather than given their own keyframes: the bottom edge runs the
+   same tape leftward and the left edge runs it upward, which is the same
+   motion played backwards. */
+.track-edge--bottom .track-tape,
+.track-edge--left .track-tape {
+	animation-direction: reverse;
+}
+
+@keyframes tape-x {
+	from { transform: translateX(-50%); }
+	to   { transform: translateX(0); }
+}
+
+@keyframes tape-y {
+	from { transform: translateY(-50%); }
+	to   { transform: translateY(0); }
 }
 
 /* Stacked, one color per full-width band, inside a block of fixed height.
-   Every palette gets the same sized gray field, so moving from a 2-color to a
+   Every palette gets the same sized block, so moving from a 2-color to a
    9-color palette does not resize the page around it.
 
    The swatches inherit flex: 1 0 0 from .swatch and so divide that height
@@ -731,65 +821,127 @@ main {
    thinner, because the panel is what is being held constant here rather than
    the size of an individual color.
 
-   Derived from --card-height rather than a literal, so it stays in proportion
-   with the cards and follows them down on mobile. */
+   The height is derived from the card rather than written as a literal, so the
+   large view stays in proportion with the wall and follows it down on mobile.
+   Width is set by the row it sits in — see .detail-top. */
 .bar-large {
 	display: flex;
 	flex-direction: column;
-	width: 100%;
 	height: calc(var(--card-height) * 3);
 	border-radius: var(--r-swatch);
 	overflow: hidden;
 }
 
-/* Palette left, everything written about it right. 1fr 1fr rather than auto,
-   so the halves stay halves no matter how long a hex list or a code block
-   gets — the split is a layout decision, not something the content negotiates.
+/* --- the codes, and the band unfolding to make room for them ---
+ *
+ * The numbers are printed on the color itself. A palette is not a set of
+ * colors and a separate table of values; it is colors that have values, and
+ * the moment those are in two columns the reader is doing joins by eye.
+ *
+ * At rest the field is unchanged — colors and nothing else. The codes are
+ * there but flat against the band, and only the band under the pointer opens
+ * far enough to read them.
+ */
 
-   align-items: start keeps the two columns independent: a long code block on
-   the right must not stretch the neutral field on the left to match it. */
-.detail-split {
-	display: grid;
-	grid-template-columns: 1fr 1fr;
+.bar-large .swatch {
+	overflow: hidden;         /* the closed bands crop their own codes */
+	transition: flex-grow 160ms ease-out;
+}
+
+/* Three grow units against the one every other band keeps, so the open band
+   takes 3/(n+2) of the field. Written as a ratio rather than a height because
+   the field is fixed and the color count is not: nine colors open to less than
+   three do, which is the same bargain .bar-large already makes at rest.
+
+   The codes are one line now, so the floor is only about 28px and any ratio
+   above 1 would clear it on a desktop. Three is kept for the gesture rather
+   than the fit: it is the amount of movement that reads as a band opening.
+   The margin also covers the phone, where the line wraps to two or three.
+
+   The total never changes, so nothing below the palette moves while the
+   pointer travels over it. The cost is that a band in the middle opens upward
+   as well as down — the ones above it give up height too. The alternative is a
+   field that grows, and a Copy panel that walks down the page under the
+   cursor. */
+.bar-large .swatch:hover,
+.bar-large .swatch:focus-visible {
+	flex-grow: 3;
+}
+
+.swatch-codes {
+	position: absolute;
+	top: var(--s3);
+	left: var(--s4);
+	right: var(--s4);
+
+	/* One line, not a stacked block. The three notations are one reading of one
+	   color, and set as a paragraph they turned each band into a small document
+	   to be worked through; along a single line they are a caption on the color.
+
+	   Wrapping is allowed but not expected. At their longest — #C7C19D, an RGB
+	   at three digits each and a CMYK the same — the line comes to about 329px,
+	   and 361px once the insets are counted, against the 384px the palette is
+	   given. It holds on a desktop and gives way on a phone, where the palette
+	   is half that width and a clipped CMYK would be the alternative. */
+	display: flex;
+	flex-wrap: wrap;
+	align-items: baseline;
+	gap: var(--s3);
+
+	font-size: var(--t2);
+	line-height: var(--lh-label);
+	text-align: left;
+
+	/* Inherited by the three spans, so a value never breaks across lines
+	   part-way through itself. The wrapping above happens between them. */
+	white-space: nowrap;
+
+	/* The swatch underneath is the button. Without this the pointer would be
+	   over the text rather than the control for part of the band. */
+	pointer-events: none;
+
+	opacity: 0;
+	transition: opacity 120ms ease-out;
+}
+
+.bar-large .swatch:hover .swatch-codes,
+.bar-large .swatch:focus-visible .swatch-codes {
+	opacity: 1;
+}
+
+/* The palette beside the panel that copies it, as a pair in the middle of the
+   page rather than a pair stretched across it. The two of them are one object —
+   a palette and the way it leaves — so they are sized and centred together, and
+   the width left over on either side is margin, not something to fill.
+
+   Centring is the whole point of the flex row here; a grid would have to be
+   told a track width to centre within, and this way the row is only ever as
+   wide as the two things in it.
+
+   align-items: flex-start keeps the halves independent: a long code block must
+   not stretch the palette beside it to match. */
+.detail-top {
+	display: flex;
+	flex-wrap: wrap;
+	justify-content: center;
+	align-items: flex-start;
 	gap: var(--s5);
-	align-items: start;
 }
 
-/* Grid items default to min-width: auto, which refuses to shrink below their
-   content — the <pre> would push its column wider than half instead of
-   scrolling. This is what makes overflow-x on .code actually work. */
-.detail-split > * {
-	min-width: 0;
-}
+/* Five units each. The width is set by the copy panel: four buttons at 13px
+   with --s2/--s4 padding come to about 377px, and 411px once the panel's own
+   padding is counted, so anything narrower breaks that row onto two lines. Five
+   units clears it, and the palette beside it takes the same width because two
+   things standing level should not be different sizes.
 
-.detail-info {
-	display: flex;
-	flex-direction: column;
-	gap: var(--s4);
-}
-
-/* Below this the two columns are each too narrow to read a hex in, let alone
-   judge a color. */
-@media (max-width: 900px) {
-	.detail-split {
-		grid-template-columns: 1fr;
-	}
-}
-
-.color-list {
-	display: flex;
-	flex-direction: column;
-	gap: var(--s2);
-}
-
-.color-row {
-	display: grid;
-	grid-template-columns: auto 1fr auto;
-	gap: var(--s4);
-	align-items: center;
-
-	padding-bottom: var(--s2);
-	border-bottom: 1px solid var(--line);
+   Neither grows nor shrinks. A wide screen leaves the pair at its size and puts
+   the slack in the margins; a screen too narrow for both wraps them rather than
+   squeezing, which is what keeps the buttons on one line for as long as they are
+   side by side at all. max-width is the release valve on a phone, where five
+   units can be wider than the screen. */
+.detail-top > * {
+	flex: 0 0 calc(var(--unit) * 5);
+	max-width: 100%;
 }
 
 .copy-row {
@@ -825,10 +977,16 @@ main {
 /* Fixed tracks, not flexible ones. With flex, the slider took whatever the
    value text left over — so switching from "default" to "exactly this color"
    made the track shorter under the user's own cursor. Grid columns are set by
-   the layout, so the wording cannot reach the control. */
+   the layout, so the wording cannot reach the control.
+
+   The track is minmax rather than a flat 12rem because this control now lives
+   in half a column: at its widest it is the same 12rem as before, and where
+   the column cannot afford that it gives up slider length rather than running
+   off the panel. The value stays at a fixed 18ch throughout, so the wording
+   still cannot move anything. */
 .similarity {
 	display: grid;
-	grid-template-columns: auto 12rem 18ch;
+	grid-template-columns: auto minmax(0, 12rem) 18ch;
 	gap: var(--s3);
 	align-items: center;
 	flex: none;

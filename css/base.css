@@ -48,8 +48,11 @@ button {
 /* ---------- page ---------- */
 
 html {
-	/* tells the browser to theme scrollbars and form controls with the tokens above */
-	color-scheme: light dark;
+	/* Light, not "light dark". The tokens no longer follow the system, and left
+	   at both this would hand the scrollbar, the similarity slider and every
+	   other browser-drawn control to a dark operating system — dark furniture
+	   on a light page. */
+	color-scheme: light;
 	-webkit-text-size-adjust: 100%;
 
 	/* Keeps the scrollbar's width reserved whether or not one is showing. A

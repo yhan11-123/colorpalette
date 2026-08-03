@@ -20,7 +20,7 @@ const el = id => document.querySelector('#' + id);
 const ui = {
 	detail: el('detail'), missing: el('missing'),
 	catalog: el('catalog'), save: el('save'),
-	large: el('large'), colors: el('colors'),
+	large: el('large'), track: el('track'),
 	preview: el('preview'), copied: el('copied'),
 	matchChip: el('matchChip'), matchCount: el('matchCount'),
 	matches: el('matches'),
@@ -52,8 +52,8 @@ async function init() {
 
 	ui.catalog.textContent = `No. ${String(palette.catalogNo).padStart(4, '0')}`;
 
-	renderSwatches(ui.large, palette.colors, { interactive: true });
-	renderColorList();
+	renderSwatches(ui.large, palette.colors, { interactive: true, codes: true });
+	renderTrack();
 	renderCopy();
 	renderSaveButton();
 
@@ -64,35 +64,59 @@ async function init() {
 }
 
 
-/* ---------- per color ---------- */
+/* ---------- the border of moving text ---------- */
 
-function renderColorList() {
-	ui.colors.replaceChildren();
+// Four windows, one per edge, each with a tape of codes running through it.
+// The order is the direction of travel: along the top, down the right, back
+// along the bottom, up the left.
+const EDGES = ['top', 'right', 'bottom', 'left'];
 
-	palette.colors.forEach((color, i) => {
-		const row = document.createElement('div');
-		row.className = 'color-row';
+// Codes in one run of the tape. A run has to be longer than the longest edge
+// it passes — 40 codes is around 2,000px of text against the 546px of the tall
+// side — so an edge is never looking at the end of the tape.
+const RUN_CODES = 40;
 
-		const chip = document.createElement('button');
-		chip.type = 'button';
-		chip.className = 'chip chip--lg';
-		chip.style.background = color.hex;
-		chip.setAttribute('aria-label', `Find palettes containing ${color.hex}`);
-		chip.addEventListener('click', () => selectColor(i));
+function renderTrack() {
+	ui.track.replaceChildren();
 
-		const hex = document.createElement('span');
-		hex.className = 'num';
-		hex.textContent = color.hex;
+	for (const edge of EDGES) {
+		const tape = document.createElement('div');
+		tape.className = 'track-tape num';
 
-		const copy = document.createElement('button');
-		copy.type = 'button';
-		copy.className = 'btn btn--quiet';
-		copy.textContent = 'Copy';
-		copy.addEventListener('click', () => copyText(color.hex, `${color.hex} copied`));
+		// Twice over. The animation moves the tape by exactly half its own
+		// length, so the two halves have to be the same run for the loop to
+		// close without a visible join.
+		tape.append(run(), run());
 
-		row.append(chip, hex, copy);
-		ui.colors.append(row);
-	});
+		const strip = document.createElement('div');
+		strip.className = `track-edge track-edge--${edge}`;
+		strip.append(tape);
+
+		ui.track.append(strip);
+	}
+}
+
+// The palette written out over and over, each code in the color it names.
+function run() {
+	const { colors } = palette;
+
+	// Rounded up to whole palettes, so where the end of one run meets the start
+	// of the next the sequence carries on rather than jumping mid-palette.
+	const total = Math.ceil(RUN_CODES / colors.length) * colors.length;
+
+	const frag = document.createDocumentFragment();
+
+	for (let i = 0; i < total; i++) {
+		const { hex } = colors[i % colors.length];
+
+		const code = document.createElement('span');
+		code.textContent = `${hex.toUpperCase()} `;
+		code.style.color = hex;
+
+		frag.append(code);
+	}
+
+	return frag;
 }
 
 
@@ -160,7 +184,10 @@ ui.save.addEventListener('click', async () => {
 
 /* ---------- the color filter ---------- */
 
-const PROMPT = 'Click a color above to see every other palette that contains it.';
+// Must read the same as the copy sitting in palette.html — that one is what is
+// on screen before this file runs, and this one replaces it when a color is
+// released. Two wordings would look like the panel changed its mind.
+const PROMPT = 'Click a color in the palette to see every other palette that contains it.';
 
 function selectColor(index) {
 	selected = selected === index ? null : index;

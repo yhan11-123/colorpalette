@@ -1,17 +1,38 @@
 /* tokens.css — design system variables. No selectors but :root, no rules but custom properties. */
 
 :root {
-	/* achromatic — zero hue */
-	--bg:            #ffffff;
-	--surface:       #f5f5f5;
+	/* achromatic — zero hue.
+	 *
+	 * The page is off-white rather than white, and a panel is white: a surface
+	 * is always the lighter of the two, which is the same direction the dark
+	 * theme lifts them. White is spent on the things that hold content instead
+	 * of on the whole window.
+	 *
+	 * Still zero hue. A warm or cool white would put a tint behind every
+	 * palette in the archive and quietly change how each one reads, and the
+	 * only colored pixels here are supposed to be the user's. */
+	--bg:            #f4f4f4;
+	--surface:       #ffffff;
 	--surface-sunk:  #ebebeb;
+	/* Separates one area from another. Not a control boundary, so it is allowed
+	   to be as quiet as it is — a panel is already told apart by being white in
+	   front of the page. */
 	--line:          #e0e0e0;
-	--line-strong:   #c2c2c2;
-	--text:          #171717;
-	--text-muted:    #757575;
 
-	/* neutral field for judging color accurately (large view on detail) */
-	--neutral-field: #808080;
+	/* The edge of a button or an input, which is a different job: it says where
+	   a control begins, so WCAG asks 3:1 of it the way it asks 4.5 of text. The
+	   old #c2c2c2 measured 1.78 and drew controls that were only really visible
+	   by their labels. This clears 3 against the page and against a panel. */
+	--line-strong:   #8c8c8c;
+
+	/* 16.3 against the page, 17.9 against a panel. */
+	--text:          #171717;
+
+	/* Darker than it looks like it needs to be. Labels are 13px and sit on all
+	   three surfaces, and at the old #757575 they measured 4.19 against the
+	   page — passing on white but failing AA the moment the page stopped being
+	   white. This clears 4.5 on page, panel and sunk alike. */
+	--text-muted:    #666666;
 
 	/* type */
 	--font-ui:   ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
@@ -59,14 +80,15 @@
 	}
 }
 
-@media (prefers-color-scheme: dark) {
-	:root {
-		--bg:           #0d0d0d;
-		--surface:      #1a1a1a;
-		--surface-sunk: #242424;
-		--line:         #2e2e2e;
-		--line-strong:  #4a4a4a;
-		--text:         #f0f0f0;
-		--text-muted:   #8f8f8f;
-	}
-}
+/* There is no dark theme. It is not an omission — the site is light whatever
+   the system is set to, and on purpose.
+ *
+ * Everything here exists to let one palette be compared against another, and a
+ * color does not survive the change: the same swatch reads lighter and more
+ * saturated against #0d0d0d than against #f4f4f4, so two people looking at the
+ * same catalog number were not seeing the same thing. A surround that follows
+ * the viewer's operating system is a variable running through every judgement
+ * the archive is for.
+ *
+ * White was the honest choice for that surround and this is one step off it,
+ * far enough to let a panel be white in front of it and no further. */
