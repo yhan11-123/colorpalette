@@ -722,9 +722,13 @@ main {
 /* --- the frame, and the border made of text ---
  *
  * The palette's border is not a line. It is the palette's own hex codes,
- * written end to end without a break and travelling round the four edges — top
- * to the right, right downward, bottom to the left, left upward — so the whole
- * ring is one stream circling the color it describes.
+ * written end to end without a break and travelling round a rounded rectangle,
+ * so the whole ring is one stream circling the color it describes.
+ *
+ * Drawn as text on an SVG path rather than as four strips of HTML, one per
+ * side. Four strips can only meet at a corner; they cannot turn one. On a path
+ * the renderer places and rotates every glyph itself, so the line goes round
+ * the corners as one line and the ring has no joins in it at all.
  *
  * Not meant to be read. A code turns on its side down the edges and passes
  * upside down along the bottom, which is what it costs for the line to be
@@ -738,91 +742,35 @@ main {
 .palette-frame {
 	--frame-pad: var(--s7);
 
-	/* One pass of the tape. The tape is around 2,000px of text, so this is a
-	   drift of about 50px a second — slow enough to be a border that moves
-	   rather than a ticker demanding to be read. */
-	--lap: 40s;
+	/* How hard the corners turn. Big enough to read as a curve rather than a
+	   chamfer, and well inside the half-gutter the rail is drawn on, so a
+	   rounded corner never leans into the palette or off the frame.
+	   JS reads this to build the path. */
+	--rail-radius: var(--s6);
 
 	position: relative;
 	padding: var(--frame-pad);
 }
 
+/* The whole frame, not the gutter. The rail is inset within it instead, which
+   leaves the glyphs — which straddle the path, half in and half out — room on
+   both sides rather than being cropped by the edge of their own container. */
 .frame-track {
 	position: absolute;
-	inset: calc(var(--frame-pad) / 2);
+	inset: 0;
 	pointer-events: none;
 }
 
-/* One edge of the ring: a window the height of a line of text, with a tape of
-   codes running through it. The window crops; the tape is what moves. */
-.track-edge {
-	position: absolute;
-	overflow: hidden;
+.frame-track svg {
+	width: 100%;
+	height: 100%;
+}
 
+/* SVG text takes no font from the page: it has to be told. The color is not
+   set here — each code carries its own on its tspan. */
+.frame-rail {
+	font-family: var(--font-num);
 	font-size: var(--t1);
-	line-height: 1.25;
-	white-space: nowrap;
-}
-
-/* The two horizontals take the full width, corners included, and the two
-   verticals start where they end. The four windows tile the ring exactly once
-   — overlapping them would print two streams over each other at each corner. */
-.track-edge--top,
-.track-edge--bottom {
-	left: 0;
-	right: 0;
-	height: 1.25em;
-}
-
-.track-edge--top    { top: 0; }
-.track-edge--bottom { bottom: 0; }
-
-/* vertical-rl turns the line on its side: the codes run top to bottom with the
-   glyphs rotated, which is what makes the stream continue round the corner
-   instead of stacking up as horizontal words. */
-.track-edge--left,
-.track-edge--right {
-	top: 1.25em;
-	bottom: 1.25em;
-	width: 1.25em;
-	writing-mode: vertical-rl;
-}
-
-.track-edge--left  { left: 0; }
-.track-edge--right { right: 0; }
-
-/* The tape carries the same run of codes twice. Moving it by exactly half its
-   own length therefore lands on a frame identical to the one it started from,
-   and the loop has no seam to hide.
- *
- * Every edge shifts by the same half-tape over the same --lap, so all four run
- * at one speed without any of them being told what that speed is. */
-.track-tape {
-	display: inline-block;
-	animation: tape-x var(--lap) linear infinite;
-}
-
-.track-edge--right .track-tape,
-.track-edge--left .track-tape {
-	animation-name: tape-y;
-}
-
-/* Reversed rather than given their own keyframes: the bottom edge runs the
-   same tape leftward and the left edge runs it upward, which is the same
-   motion played backwards. */
-.track-edge--bottom .track-tape,
-.track-edge--left .track-tape {
-	animation-direction: reverse;
-}
-
-@keyframes tape-x {
-	from { transform: translateX(-50%); }
-	to   { transform: translateX(0); }
-}
-
-@keyframes tape-y {
-	from { transform: translateY(-50%); }
-	to   { transform: translateY(0); }
 }
 
 /* Stacked, one color per full-width band, inside a block of fixed height.
@@ -866,10 +814,9 @@ main {
    the field is fixed and the color count is not: nine colors open to less than
    three do, which is the same bargain .bar-large already makes at rest.
 
-   The codes are one line now, so the floor is only about 28px and any ratio
-   above 1 would clear it on a desktop. Three is kept for the gesture rather
-   than the fit: it is the amount of movement that reads as a band opening.
-   The margin also covers the phone, where the line wraps to two or three.
+   The floor to clear is about 63px — the three stacked notations at 13px on
+   1.2, their gaps, and the inset. At this ratio a nine-color palette opens to
+   136px, and the same palette on a phone to 102px, so both clear it.
 
    The total never changes, so nothing below the palette moves while the
    pointer travels over it. The cost is that a band in the middle opens upward
@@ -887,26 +834,29 @@ main {
 	left: var(--s4);
 	right: var(--s4);
 
-	/* One line, not a stacked block. The three notations are one reading of one
-	   color, and set as a paragraph they turned each band into a small document
-	   to be worked through; along a single line they are a caption on the color.
+	/* One block per notation, stacked. Two columns rather than three lines of
+	   running text: the names go in the first and the values in the second, so
+	   the numbers line up under each other and the three can be looked down
+	   rather than read across.
 
-	   Wrapping is allowed but not expected. At their longest — #C7C19D, an RGB
-	   at three digits each and a CMYK the same — the line comes to about 329px,
-	   and 361px once the insets are counted, against the 384px the palette is
-	   given. It holds on a desktop and gives way on a phone, where the palette
-	   is half that width and a clipped CMYK would be the alternative. */
-	display: flex;
-	flex-wrap: wrap;
+	   justify-content: start keeps both columns only as wide as their content,
+	   so the block sits against the left of the band instead of stretching to
+	   the width of the palette.
+
+	   It is also the narrower shape. At its longest the block is about 130px
+	   against the 361px the same three notations took on one line, which is
+	   what lets it hold together on a phone where the palette is half width. */
+	display: grid;
+	grid-template-columns: auto auto;
+	justify-content: start;
 	align-items: baseline;
-	gap: var(--s3);
+	gap: var(--s1) var(--s3);
 
 	font-size: var(--t2);
 	line-height: var(--lh-label);
 	text-align: left;
 
-	/* Inherited by the three spans, so a value never breaks across lines
-	   part-way through itself. The wrapping above happens between them. */
+	/* A value never breaks across lines part-way through itself. */
 	white-space: nowrap;
 
 	/* The swatch underneath is the button. Without this the pointer would be

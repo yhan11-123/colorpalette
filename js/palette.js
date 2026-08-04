@@ -66,62 +66,197 @@ async function init() {
 		const swatch = event.target.closest('.swatch');
 		if (swatch) selectColor(Number(swatch.dataset.index));
 	});
+
+	// The rail is a path in pixels, and the frame is sized in --unit, which is
+	// a share of the viewport below 680px. A window that changes width there
+	// changes the shape the text has to travel, so the path is rebuilt — but
+	// only when the frame really did change size, since this also fires once on
+	// its own the moment it starts watching.
+	new ResizeObserver(() => {
+		const { width, height } = ui.track.parentElement.getBoundingClientRect();
+		if (`${Math.round(width)}x${Math.round(height)}` !== railBuiltFor) renderTrack();
+	}).observe(ui.track.parentElement);
 }
 
 
 /* ---------- the border of moving text ---------- */
+//
+// The palette's own codes set along a rounded rectangle around it, sliding
+// round for ever. Text on an SVG path, because a path can turn a corner: the
+// renderer places and rotates every glyph itself, and the ring comes out as
+// one line with no joins rather than four sides that meet.
 
-// Four windows, one per edge, each with a tape of codes running through it.
-// The order is the direction of travel: along the top, down the right, back
-// along the bottom, up the left.
-const EDGES = ['top', 'right', 'bottom', 'left'];
+const SVG = 'http://www.w3.org/2000/svg';
+const XML = 'http://www.w3.org/XML/1998/namespace';
 
-// Codes in one run of the tape. A run has to be longer than the longest edge
-// it passes — 40 codes is around 2,000px of text against the 546px of the tall
-// side — so an edge is never looking at the end of the tape.
-const RUN_CODES = 40;
+// Pixels a second. The duration is worked out from this rather than the other
+// way round: the loop is one palette's worth of text long, and that length
+// depends on how many colors the palette has, so a fixed duration would run a
+// two-color palette at a quarter the speed of a nine-color one. Speed is what
+// should be the same from palette to palette.
+const SPEED = 50;
+
+const CODE = 8;               // characters in "#RRGGBB " — the same for every color
+
+// The advance of a code in a typical monospace face, as a fraction of the font
+// size. Only a starting guess for how many codes a lap holds — the exact fit is
+// forced afterwards, so being a little out here costs nothing but a hair of
+// letter spacing.
+const CODE_EM = 0.6;
+
+// What the rail was last built for. The frame follows --unit, which follows the
+// viewport, so a resize needs a new path — but a resize that leaves the frame
+// the same size does not.
+let railBuiltFor = '';
+
+function node(name, attrs = {}) {
+	const el = document.createElementNS(SVG, name);
+	for (const [key, value] of Object.entries(attrs)) el.setAttribute(key, value);
+	return el;
+}
+
+// Clockwise from the top left, so the stream reads left to right along the top.
+function railPath(w, h, inset, r) {
+	const right = w - inset;
+	const bottom = h - inset;
+
+	return [
+		`M ${inset + r} ${inset}`,
+		`H ${right - r}`,
+		`A ${r} ${r} 0 0 1 ${right} ${inset + r}`,
+		`V ${bottom - r}`,
+		`A ${r} ${r} 0 0 1 ${right - r} ${bottom}`,
+		`H ${inset + r}`,
+		`A ${r} ${r} 0 0 1 ${inset} ${bottom - r}`,
+		`V ${inset + r}`,
+		`A ${r} ${r} 0 0 1 ${inset + r} ${inset}`,
+		'Z',
+	].join(' ');
+}
 
 function renderTrack() {
-	ui.track.replaceChildren();
+	const frame = ui.track.parentElement;
+	const { width, height } = frame.getBoundingClientRect();
 
-	for (const edge of EDGES) {
-		const tape = document.createElement('div');
-		tape.className = 'track-tape num';
+	// Not laid out yet, or the page is still hidden. Nothing to measure.
+	if (!width || !height) return;
 
-		// Twice over. The animation moves the tape by exactly half its own
-		// length, so the two halves have to be the same run for the loop to
-		// close without a visible join.
-		tape.append(run(), run());
+	railBuiltFor = `${Math.round(width)}x${Math.round(height)}`;
 
-		const strip = document.createElement('div');
-		strip.className = `track-edge track-edge--${edge}`;
-		strip.append(tape);
+	const style = getComputedStyle(frame);
 
-		ui.track.append(strip);
+	// Down the middle of the gutter: clear of the page on one side, clear of
+	// the color on the other. Taken from the frame's own padding rather than
+	// stated again here, so the two cannot drift apart.
+	const inset = parseFloat(style.paddingTop) / 2;
+
+	const radius = Math.min(
+		parseFloat(style.getPropertyValue('--rail-radius')) || inset,
+		Math.min(width, height) / 2 - inset,
+	);
+
+	const rail = node('path', {
+		id: 'rail',
+		fill: 'none',
+		d: railPath(width, height, inset, radius),
+	});
+
+	const defs = node('defs');
+	defs.append(rail);
+
+	const stream = node('textPath', { href: '#rail', startOffset: 0 });
+
+	const text = node('text', { class: 'frame-rail' });
+
+	// Without this the renderer collapses the space each code ends with and the
+	// stream comes out as one unbroken run of hex digits.
+	text.setAttributeNS(XML, 'xml:space', 'preserve');
+	text.append(stream);
+
+	const svg = node('svg', { viewBox: `0 0 ${width} ${height}` });
+	svg.append(defs, text);
+
+	ui.track.replaceChildren(svg);
+
+	// In the document now, so the path has a length to write against.
+	const lap = rail.getTotalLength();
+
+	// One palette, purely to see how wide a code comes out in whatever font
+	// the machine actually had for --font-num.
+	write(stream, palette.colors.length);
+	const codeWidth = measure(text, CODE) || guessCodeWidth(text);
+
+	// Twice round: one lap of codes on the path, and a second lap queued behind
+	// it so there is always something following.
+	const perLap = whole(lap / codeWidth, palette.colors.length);
+
+	stream.replaceChildren();
+	write(stream, perLap * 2);
+
+	// The exact fit, and the whole reason the ring can be endless.
+	//
+	// Left at its natural width the text lands a few pixels short of the corner
+	// it set out from, or a few past it — and since the path is closed, that
+	// corner is where the end of the line and the start of it are the same
+	// point. The mismatch sits there for ever, and every restart of the loop
+	// jumps by it. Forcing the length instead makes one lap of text exactly one
+	// lap of path, so the last code meets the first and the seam closes.
+	//
+	// lengthAdjust: spacing puts the correction between the glyphs rather than
+	// inside them — the codes keep their shape, the gaps take up the slack.
+	text.setAttribute('textLength', lap * 2);
+	text.setAttribute('lengthAdjust', 'spacing');
+
+	// Exactly one lap per cycle. Sliding by the full circumference lands the
+	// second lap of text precisely where the first one was, so the moment the
+	// animation restarts is the moment nothing changes.
+	if (!matchMedia('(prefers-reduced-motion: reduce)').matches) {
+		stream.append(node('animate', {
+			attributeName: 'startOffset',
+			from: -lap,
+			to: 0,
+			dur: `${(lap / SPEED).toFixed(2)}s`,
+			repeatCount: 'indefinite',
+		}));
 	}
 }
 
-// The palette written out over and over, each code in the color it names.
-function run() {
+function write(host, codes) {
 	const { colors } = palette;
 
-	// Rounded up to whole palettes, so where the end of one run meets the start
-	// of the next the sequence carries on rather than jumping mid-palette.
-	const total = Math.ceil(RUN_CODES / colors.length) * colors.length;
-
-	const frag = document.createDocumentFragment();
-
-	for (let i = 0; i < total; i++) {
+	for (let i = 0; i < codes; i++) {
 		const { hex } = colors[i % colors.length];
 
-		const code = document.createElement('span');
+		const code = node('tspan', { fill: hex });
 		code.textContent = `${hex.toUpperCase()} `;
-		code.style.color = hex;
 
-		frag.append(code);
+		host.append(code);
 	}
+}
 
-	return frag;
+// Rounded to whole palettes, at least one. A lap that ended part-way through
+// the sequence would restart it mid-palette at the corner, which is the one
+// place on the ring where the join can be seen.
+function whole(codes, size) {
+	return Math.max(1, Math.round(codes / size)) * size;
+}
+
+// How far along the path the first n characters reach. Asked of the text
+// itself rather than worked out from the font size, because the font here is
+// whichever of --font-num the machine actually has.
+function measure(text, chars) {
+	try {
+		return text.getSubStringLength(0, chars) || 0;
+	} catch {
+		return 0;
+	}
+}
+
+// Only reached if the engine refuses to measure. Being wrong here spreads the
+// codes a little thin or a little tight; it cannot break the loop, because the
+// fit is forced either way.
+function guessCodeWidth(text) {
+	return parseFloat(getComputedStyle(text).fontSize) * CODE_EM * CODE;
 }
 
 

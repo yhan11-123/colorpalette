@@ -47,8 +47,9 @@ export function renderSwatches(host, colors, { interactive = false, removable = 
 			// is not an act available to everyone. Where they are printed, the
 			// label carries the same three notations rather than the hex alone,
 			// so the palette says the same thing either way it is read.
-			swatch.setAttribute('aria-label',
-				codes ? notations(color.hex).join(', ') : color.hex);
+			swatch.setAttribute('aria-label', codes
+				? notations(color.hex).map(([name, value]) => `${name} ${value}`).join(', ')
+				: color.hex);
 		}
 
 		if (codes) swatch.append(codeBlock(color.hex));
@@ -71,7 +72,14 @@ function codeBlock(hex) {
 	// user's color and nothing else on the page knows what that is.
 	box.style.color = inkOn(hex);
 
-	box.append(...notations(hex).map(line));
+	// Name and value go in as separate cells rather than as one string a line.
+	// The grid then holds all three values in a column of their own, so the
+	// notations stack as blocks to be looked down instead of as three
+	// sentences to be read across.
+	for (const [name, value] of notations(hex)) {
+		box.append(line(name), line(value));
+	}
+
 	return box;
 }
 
@@ -83,9 +91,9 @@ function notations(hex) {
 	const { c, m, y, k } = hexToCmyk(hex);
 
 	return [
-		hex.toUpperCase(),
-		`RGB ${r} ${g} ${b}`,
-		`CMYK ${c} ${m} ${y} ${k}`,
+		['HEX', hex.toUpperCase()],
+		['RGB', `${r} ${g} ${b}`],
+		['CMYK', `${c} ${m} ${y} ${k}`],
 	];
 }
 
