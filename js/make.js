@@ -341,19 +341,22 @@ function addColor(oklch, sourceMode) {
 
 /* ---------- modes ---------- */
 
+// Lifted out of the click handler because switching modes is not only
+// something a button does: a photograph dropped on the page has to bring the
+// panel that reads photographs with it.
+function setMode(mode) {
+	for (const button of document.querySelectorAll('.mode')) {
+		const on = button.dataset.mode === mode;
+		button.classList.toggle('is-on', on);
+		button.setAttribute('aria-pressed', String(on));
+	}
+
+	ui.pickerPanel.classList.toggle('is-hidden', mode !== 'picker');
+	ui.imagePanel.classList.toggle('is-hidden', mode !== 'image');
+}
+
 for (const button of document.querySelectorAll('.mode')) {
-	button.addEventListener('click', () => {
-		const mode = button.dataset.mode;
-
-		for (const other of document.querySelectorAll('.mode')) {
-			const on = other === button;
-			other.classList.toggle('is-on', on);
-			other.setAttribute('aria-pressed', String(on));
-		}
-
-		ui.pickerPanel.classList.toggle('is-hidden', mode !== 'picker');
-		ui.imagePanel.classList.toggle('is-hidden', mode !== 'image');
-	});
+	button.addEventListener('click', () => setMode(button.dataset.mode));
 }
 
 // Image mode hands back one color at a time, exactly like the sliders do.
@@ -368,6 +371,10 @@ mountImageMode({
 
 	onAdd() {
 		addColor(draft, draftSource);
+	},
+
+	onOpen() {
+		setMode('image');
 	},
 });
 

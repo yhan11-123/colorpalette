@@ -606,6 +606,17 @@ main {
    resolves against the PADDING box, so with the border on the stage the overlay
    starts where the image pixels start. On the canvas it would offset every
    point by the border width. */
+/* While a file is being carried over the page. No overlay and no instructions:
+   a line drawn round the screen for as long as something is actually in the
+   hand says the page will take it, and says nothing at any other time.
+
+   Offset by less than the page gutter, so the line has room to sit outside the
+   content without being cut off at the edge of the window. */
+.make.is-dropping {
+	outline: 2px solid var(--text);
+	outline-offset: var(--s3);
+}
+
 .stage {
 	position: relative;
 	display: none;

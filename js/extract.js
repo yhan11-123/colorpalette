@@ -20,7 +20,9 @@ const KMEANS_PASSES = 12;
 const LOUPE_ZOOM = 8;
 
 
-export function mountImageMode({ onPick, onAdd }) {
+//   onOpen — called when a file arrives while some other mode is showing, so
+//            the panel that reads it can be brought up
+export function mountImageMode({ onPick, onAdd, onOpen = () => {} }) {
 	const file = document.querySelector('#file');
 	const stage = document.querySelector('#stage');
 	const canvas = document.querySelector('#canvas');
@@ -65,14 +67,27 @@ export function mountImageMode({ onPick, onAdd }) {
 
 	let pixels = null;   // ImageData of the whole canvas
 
-	file.addEventListener('change', async () => {
-		const chosen = file.files?.[0];
-		if (!chosen) return;
+	file.addEventListener('change', () => use(file.files?.[0]));
+
+
+	/* ---------- taking a file ---------- */
+
+	// One path for both ways in — the button, and a file let go of anywhere on
+	// the screen.
+	async function use(blob) {
+		if (!blob) return;
+
+		// The input is filtered by accept=; a drop is filtered by nobody, and
+		// a folder or a PDF arrives here looking much the same as a photograph.
+		if (!blob.type.startsWith('image/')) {
+			hint.textContent = 'That is not an image. Try a JPEG or PNG.';
+			return;
+		}
 
 		hint.textContent = 'Reading…';
 
 		try {
-			await draw(chosen);
+			await draw(blob);
 			clearPick();
 			markCandidates();
 
@@ -84,6 +99,48 @@ export function mountImageMode({ onPick, onAdd }) {
 		} catch {
 			hint.textContent = 'That file could not be read as an image. Try a JPEG or PNG.';
 		}
+	}
+
+
+	/* ---------- dropping one ---------- */
+	//
+	// A file dropped on a page is, by default, a request for the browser to
+	// open it — which navigates away from the site and takes the tray with it.
+	// The default is refused across the whole document for that reason, so a
+	// miss costs nothing.
+	//
+	// The target is the whole screen rather than the image panel. The panel may
+	// not even be the one showing, and making someone switch modes before they
+	// are allowed to let go of a file is a rule with nothing behind it.
+
+	const zone = document.querySelector('main');
+
+	for (const type of ['dragover', 'drop']) {
+		document.addEventListener(type, event => event.preventDefault());
+	}
+
+	// Files only. Dragging a selected word across the page is a drag too, and
+	// the screen should not offer to take it.
+	zone.addEventListener('dragover', event => {
+		if (event.dataTransfer?.types.includes('Files')) zone.classList.add('is-dropping');
+	});
+
+	// dragleave fires on the way from one child to the next as well, so leaving
+	// only counts once the pointer is somewhere outside the zone entirely.
+	// relatedTarget is null when it has left the window, which contains() reads
+	// as outside — which it is.
+	zone.addEventListener('dragleave', event => {
+		if (!zone.contains(event.relatedTarget)) zone.classList.remove('is-dropping');
+	});
+
+	zone.addEventListener('drop', event => {
+		zone.classList.remove('is-dropping');
+
+		const dropped = event.dataTransfer?.files?.[0];
+		if (!dropped) return;
+
+		onOpen();
+		use(dropped);
 	});
 
 
