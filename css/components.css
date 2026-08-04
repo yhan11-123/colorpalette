@@ -708,23 +708,25 @@ main {
    where; this says what — and a flat run of the color on a plain surface is
    the only way to see it without the photograph underneath arguing with it.
 
-   One --unit wide, which is what one color is worth everywhere else on the
-   site: a card of n colors is n units across, and a color read off a photograph
-   is the same size as a color already in the archive. Shallow, because these
-   are samples of a color rather than colors in a palette — height is what the
-   tray and the cards use to mean a palette, and this is not one yet. */
+   A unit and a half wide, so it stays on the same grid the cards are drawn on
+   — one color is one --unit everywhere else — while being long enough to read
+   as a length of color rather than as a chip of one. A color needs some run to
+   be judged; a small square of it is a label.
+
+   Still shallow next to its length. Height is what the tray and the cards use
+   to mean a palette, and these are candidates for one rather than one yet. */
 .extract {
-	width: var(--unit);
-	height: var(--s5);
+	width: calc(var(--unit) * 1.5);
+	height: var(--s6);
 	border: 1px solid var(--line);
 }
 
 /* Taken. Two inset hairlines, white then black — the same mark a chosen color
    carries everywhere else on the site, legible on any color and bringing no
-   hue of its own. Drawn a step finer here: at the usual 2 and 4 the pair would
-   take a third of a band this shallow. */
+   hue of its own, and now at the same weight as everywhere else: the band has
+   the depth to hold it. */
 .extract.is-picked {
-	box-shadow: inset 0 0 0 1px #fff, inset 0 0 0 2px #000;
+	box-shadow: inset 0 0 0 2px #fff, inset 0 0 0 4px #000;
 }
 
 .picked {
@@ -982,13 +984,15 @@ main {
    told a track width to centre within, and this way the row is only ever as
    wide as the two things in it.
 
-   align-items: flex-start keeps the halves independent: a long code block must
-   not stretch the palette beside it to match. */
+   align-items: stretch, so the two stand the same height and the row reads as
+   one object rather than as a tall thing with a short thing parked beside it.
+   The palette is the taller of the two and sets the height; what the panel
+   does with the extra is its own business — see .detail-top .code. */
 .detail-top {
 	display: flex;
 	flex-wrap: wrap;
 	justify-content: center;
-	align-items: flex-start;
+	align-items: stretch;
 	gap: var(--s5);
 }
 
@@ -1006,6 +1010,23 @@ main {
 .detail-top > * {
 	flex: 0 0 calc(var(--unit) * 5);
 	max-width: 100%;
+}
+
+/* A window of a fixed size, not a block that fits itself to what is in it.
+ *
+ * The four formats print wildly different numbers of lines — an array of six
+ * hexes against six oklch() calls against a CSS block with a brace on each end
+ * — and a box that resized to each of them would jump under the cursor every
+ * time one of those buttons was pressed. It scrolls instead, and the panel
+ * around it stands still.
+ *
+ * flex: none matters as much as the height. Left to grow into the space the
+ * palette leaves over, the box also collapses to nothing the moment the two
+ * wrap onto separate rows and there is no space left over to take. */
+.detail-top .code {
+	flex: none;
+	height: calc(var(--card-height) * 2);
+	overflow: auto;
 }
 
 .copy-row {
