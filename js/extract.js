@@ -28,6 +28,9 @@ export function mountImageMode({ onPick, onAdd }) {
 	const loupe = document.querySelector('#loupe');
 	const hint = document.querySelector('#fileHint');
 
+	const extracted = document.querySelector('#extracted');
+	const row = document.querySelector('#extractedRow');
+
 	const picked = document.querySelector('#picked');
 	const pickedChip = document.querySelector('#pickedChip');
 	const pickedHex = document.querySelector('#pickedHex');
@@ -186,9 +189,13 @@ export function mountImageMode({ onPick, onAdd }) {
 
 	/* ---------- picking, and showing what was picked ---------- */
 
-	// One path for both the eyedropper and the suggestion dots, so a color
-	// taken either way reports itself the same.
-	function take(x, y, dot) {
+	// One path for the eyedropper, the rings and the squares alike, so a color
+	// taken any of the three ways reports itself the same.
+	//
+	// A suggestion is identified by its index rather than by the element that
+	// was pressed, because two elements stand for it — the ring on the image
+	// and the square below — and both have to end up saying the same thing.
+	function take(x, y, index = null) {
 		const oklab = sample(x, y);
 
 		marker.hidden = false;
@@ -200,9 +207,10 @@ export function mountImageMode({ onPick, onAdd }) {
 		pickedHex.textContent = hex;
 		picked.hidden = false;
 
-		for (const other of layer.querySelectorAll('.candidate')) {
-			other.classList.toggle('is-picked', other === dot);
-			other.setAttribute('aria-pressed', String(other === dot));
+		for (const node of document.querySelectorAll('[data-candidate]')) {
+			const on = index !== null && Number(node.dataset.candidate) === index;
+			node.classList.toggle('is-picked', on);
+			node.setAttribute('aria-pressed', String(on));
 		}
 
 		onPick(oklab);
@@ -218,28 +226,41 @@ export function mountImageMode({ onPick, onAdd }) {
 
 	function markCandidates() {
 		layer.replaceChildren();
+		row.replaceChildren();
 
 		const samples = collectSamples();
 		const clusters = kmeans(samples, CLUSTERS);
 		const chosen = spreadOut(clusters, CANDIDATES);
 
-		for (const cluster of chosen) {
+		chosen.forEach((cluster, index) => {
 			const point = nearestSample(samples, cluster.center);
+			const hex = oklabToHex(cluster.center);
 
-			const dot = document.createElement('button');
-			dot.type = 'button';
-			dot.className = 'candidate';
+			// Where it was found, on the image.
+			const dot = suggestion('candidate', hex, index, point);
 			dot.style.left = `${(point.x / canvas.width) * 100}%`;
 			dot.style.top = `${(point.y / canvas.height) * 100}%`;
-			dot.style.background = oklabToHex(cluster.center);
-			dot.setAttribute('aria-label', `Suggested color ${oklabToHex(cluster.center)}`);
-			dot.setAttribute('aria-pressed', 'false');
-
-			dot.addEventListener('click', () => take(point.x, point.y, dot));
 			layer.append(dot);
-		}
+
+			// What was found, off the image.
+			row.append(suggestion('extract', hex, index, point));
+		});
 
 		layer.append(marker);   // replaceChildren above dropped it
+		extracted.hidden = chosen.length === 0;
+	}
+
+	function suggestion(className, hex, index, point) {
+		const button = document.createElement('button');
+		button.type = 'button';
+		button.className = className;
+		button.dataset.candidate = index;
+		button.style.background = hex;
+		button.setAttribute('aria-label', `Suggested color ${hex}`);
+		button.setAttribute('aria-pressed', 'false');
+
+		button.addEventListener('click', () => take(point.x, point.y, index));
+		return button;
 	}
 
 	function collectSamples() {

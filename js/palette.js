@@ -4,7 +4,7 @@
 // Give this file the most care. Everything else is scaffolding around it.
 
 import { getPalette, findPalettesByColor } from './db.js';
-import { renderSwatches, renderWall } from './card.js';
+import { renderSwatches, renderWall, renderCodes } from './card.js';
 import { oklabToOklch } from './color.js';
 
 // SPEC §3.2. Named, because the user reads these as focus settings rather than
@@ -22,6 +22,7 @@ const ui = {
 	catalog: el('catalog'),
 	large: el('large'), track: el('track'), twin: el('twin'),
 	preview: el('preview'), copied: el('copied'),
+	pick: el('pick'), single: el('single'),
 	matchChip: el('matchChip'), matchCount: el('matchCount'),
 	matches: el('matches'),
 	threshold: el('threshold'), thresholdLabel: el('thresholdLabel'),
@@ -58,13 +59,23 @@ async function init() {
 	ui.catalog.textContent = `No. ${String(palette.catalogNo).padStart(4, '0')}`;
 	ui.twin.hidden = !arrivedAsTwin;
 
-	renderSwatches(ui.large, palette.colors, { interactive: true, codes: true });
+	renderSwatches(ui.large, palette.colors, { interactive: true, labelled: true });
 	renderTrack();
 	renderCopy();
+	renderSingle();
 
 	ui.large.addEventListener('click', event => {
+		// A drag across the hex printed on a band is someone taking the number
+		// by hand, not asking for the archive to be filtered.
+		if (dragged(event.target)) return;
+
 		const swatch = event.target.closest('.swatch');
 		if (swatch) selectColor(Number(swatch.dataset.index));
+	});
+
+	ui.single.addEventListener('click', event => {
+		const code = event.target.closest('.code-copy');
+		if (code) copyCode(code);
 	});
 
 	// The rail is a path in pixels, and the frame is sized in --unit, which is
@@ -97,6 +108,19 @@ const XML = 'http://www.w3.org/XML/1998/namespace';
 const SPEED = 50;
 
 const CODE = 8;               // characters in "#RRGGBB " — the same for every color
+
+// Laps of text written for a ring one lap around, and the reason the ring is
+// never caught half empty.
+//
+// Two was the obvious number — one lap on the path and one queued behind it —
+// but two leaves nothing to spare: at the start of the cycle the first lap has
+// just gone off the front, and the ring is standing on the second one alone.
+// Any shortfall in the fit, and the far side of the ring has nothing on it
+// until the animation has carried the rest round.
+//
+// Three keeps a whole lap in hand at each end. The path is covered at every
+// offset the animation passes through, from the first frame on.
+const LAPS = 3;
 
 // The advance of a code in a typical monospace face, as a fraction of the font
 // size. Only a starting guess for how many codes a lap holds — the exact fit is
@@ -145,10 +169,11 @@ function renderTrack() {
 
 	const style = getComputedStyle(frame);
 
-	// Down the middle of the gutter: clear of the page on one side, clear of
-	// the color on the other. Taken from the frame's own padding rather than
-	// stated again here, so the two cannot drift apart.
-	const inset = parseFloat(style.paddingTop) / 2;
+	// Where in the gutter the rail runs. Falls back to the middle of it if the
+	// value cannot be read, which is the one position that needs no knowledge
+	// of anything but the frame's own padding.
+	const inset = parseFloat(style.getPropertyValue('--rail-inset'))
+		|| parseFloat(style.paddingTop) / 2;
 
 	const radius = Math.min(
 		parseFloat(style.getPropertyValue('--rail-radius')) || inset,
@@ -164,7 +189,7 @@ function renderTrack() {
 	const defs = node('defs');
 	defs.append(rail);
 
-	const stream = node('textPath', { href: '#rail', startOffset: 0 });
+	const stream = node('textPath', { href: '#rail' });
 
 	const text = node('text', { class: 'frame-rail' });
 
@@ -186,12 +211,10 @@ function renderTrack() {
 	write(stream, palette.colors.length);
 	const codeWidth = measure(text, CODE) || guessCodeWidth(text);
 
-	// Twice round: one lap of codes on the path, and a second lap queued behind
-	// it so there is always something following.
 	const perLap = whole(lap / codeWidth, palette.colors.length);
 
 	stream.replaceChildren();
-	write(stream, perLap * 2);
+	write(stream, perLap * LAPS);
 
 	// The exact fit, and the whole reason the ring can be endless.
 	//
@@ -202,13 +225,22 @@ function renderTrack() {
 	// jumps by it. Forcing the length instead makes one lap of text exactly one
 	// lap of path, so the last code meets the first and the seam closes.
 	//
+	// Set on the textPath rather than on the text around it: the glyphs are
+	// laid out here, against the path, and this is the element every engine
+	// agrees the measurement belongs to.
+	//
 	// lengthAdjust: spacing puts the correction between the glyphs rather than
 	// inside them — the codes keep their shape, the gaps take up the slack.
-	text.setAttribute('textLength', lap * 2);
-	text.setAttribute('lengthAdjust', 'spacing');
+	stream.setAttribute('textLength', lap * LAPS);
+	stream.setAttribute('lengthAdjust', 'spacing');
+
+	// Where the animation begins, stated on the element as well, so the first
+	// frame drawn is already the frame the loop keeps returning to rather than
+	// a lap's worth of text sitting in a different place for one paint.
+	stream.setAttribute('startOffset', -lap);
 
 	// Exactly one lap per cycle. Sliding by the full circumference lands the
-	// second lap of text precisely where the first one was, so the moment the
+	// next lap of text precisely where the last one was, so the moment the
 	// animation restarts is the moment nothing changes.
 	if (!matchMedia('(prefers-reduced-motion: reduce)').matches) {
 		stream.append(node('animate', {
@@ -257,6 +289,75 @@ function measure(text, chars) {
 // fit is forced either way.
 function guessCodeWidth(text) {
 	return parseFloat(getComputedStyle(text).fontSize) * CODE_EM * CODE;
+}
+
+
+/* ---------- one color, in the panel ---------- */
+// The palette is the picker. There is no second row of chips to choose from,
+// because the colors are already on the page at full size and choosing one of
+// them is already what a band does — a control beside the palette offering the
+// same colors again would be the palette drawn twice.
+//
+// So one selection drives both things a color can do here: the archive is
+// filtered by it, and its full reading appears in the panel. On the band
+// itself there is only the hex, which is a caption rather than a copy of this.
+
+function renderSingle() {
+	const color = selected === null ? null : palette.colors[selected];
+
+	ui.pick.hidden = color !== null;
+
+	if (!color) {
+		ui.single.replaceChildren();
+		return;
+	}
+
+	renderCodes(ui.single, color.hex);
+}
+
+
+/* ---------- copying one code ---------- */
+// The panel below copies the whole palette in a format meant for a file. This
+// copies one number as it is written, because most of the time what is wanted
+// out of an archive is a single color out of a single palette.
+
+const COPIED_MARK = 1400;
+
+let copiedFor = null;
+
+// True when the click that just happened was the end of a drag across text
+// inside this element. Someone who went to the trouble of highlighting four of
+// the six digits did not mean to press anything.
+//
+// Scoped to the element rather than to the page: a selection left lying
+// somewhere else is not a reason to swallow a press here.
+function dragged(target) {
+	const selection = window.getSelection();
+
+	return Boolean(selection)
+		&& !selection.isCollapsed
+		&& target.contains?.(selection.anchorNode);
+}
+
+async function copyCode(button) {
+	if (dragged(button)) return;
+
+	const value = button.dataset.copy;
+
+	await copyText(value, `${value} copied`);
+
+	// The confirmation from copyText lands in the panel beside the palette,
+	// which is a column away from the code that was pressed. This says it at
+	// the code as well. Only one at a time — the previous mark is cleared
+	// rather than left to time out on its own, so two quick copies do not
+	// leave two things claiming to have just happened.
+	clearTimeout(copiedFor);
+	for (const marked of ui.detail.querySelectorAll('.code-copy.is-copied')) {
+		marked.classList.remove('is-copied');
+	}
+
+	button.classList.add('is-copied');
+	copiedFor = setTimeout(() => button.classList.remove('is-copied'), COPIED_MARK);
 }
 
 
@@ -317,6 +418,10 @@ function selectColor(index) {
 	[...ui.large.children].forEach((node, i) => {
 		node.classList.toggle('is-selected', i === selected);
 	});
+
+	// One selection, both of the things a color does on this page: it filters
+	// the archive below, and it is the color the copy panel is reading out.
+	renderSingle();
 
 	if (selected === null) {
 		// Back to the invitation. The panel itself stays where it is, so

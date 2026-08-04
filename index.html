@@ -153,6 +153,17 @@
 				<canvas class="loupe" id="loupe" width="96" height="96"></canvas>
 			</div>
 
+			<!-- ---------- the same suggestions, off the photograph ----------
+			     The rings mark where each color was found; these are what was
+			     found. A color on a photograph is read through everything
+			     around it, so the ring alone never quite tells you what you
+			     are being offered — side by side and on a plain surface, it
+			     does. Pressing either one takes the color. -->
+			<div class="extracted" id="extracted" hidden>
+				<p class="label">Suggested colors</p>
+				<div class="extracted__row" id="extractedRow"></div>
+			</div>
+
 			<!-- What you just took, shown where you are looking. Without this the
 			     only feedback is the preview swatch inside the precision panel,
 			     which is hidden while image mode is open. -->

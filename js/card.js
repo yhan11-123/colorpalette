@@ -21,8 +21,8 @@ const HEX_FOR_LABEL = 6;
 //
 //   interactive — the swatch can be clicked (select a color)
 //   removable   — it also carries a dismiss control, for the tray
-//   codes       — the color's own notations are printed inside it
-export function renderSwatches(host, colors, { interactive = false, removable = false, codes = false } = {}) {
+//   labelled    — the color's hex is printed on it
+export function renderSwatches(host, colors, { interactive = false, removable = false, labelled = false } = {}) {
 	host.replaceChildren();
 	host.style.setProperty('--n', colors.length);
 
@@ -43,45 +43,63 @@ export function renderSwatches(host, colors, { interactive = false, removable = 
 		} else if (interactive) {
 			swatch.type = 'button';
 
-			// The codes are revealed by moving a pointer onto the band, which
-			// is not an act available to everyone. Where they are printed, the
-			// label carries the same three notations rather than the hex alone,
-			// so the palette says the same thing either way it is read.
-			swatch.setAttribute('aria-label', codes
-				? notations(color.hex).map(([name, value]) => `${name} ${value}`).join(', ')
+			// The hex printed on the band is a caption, not a control — the
+			// whole band does one thing. Saying what that thing is here rather
+			// than reading back the number the eye already has.
+			swatch.setAttribute('aria-label', labelled
+				? `Find palettes containing ${color.hex}`
 				: color.hex);
 		}
 
-		if (codes) swatch.append(codeBlock(color.hex));
+		if (labelled) swatch.append(hexLabel(color.hex));
 
 		host.append(swatch);
 	});
 }
 
-// The codes live on the color rather than in a list beside it, so a number is
-// never one column away from the thing it names — and so reading the palette
-// and reading its values are the same act.
-//
-// Plain text, no controls: this goes inside a swatch that is itself a button
-// on the detail page, and a button inside a button is dropped by the browser.
-function codeBlock(hex) {
-	const box = document.createElement('span');
-	box.className = 'swatch-codes num';
+// The color's own hex, written on it. Only the hex: the full three notations
+// live in one place, and a band that carried them too would be the same lines
+// printed twice on one screen.
+function hexLabel(hex) {
+	const label = document.createElement('span');
+	label.className = 'swatch-hex num';
+	label.textContent = hex.toUpperCase();
 
 	// Set per swatch, because the surface it has to be legible on is the
 	// user's color and nothing else on the page knows what that is.
-	box.style.color = inkOn(hex);
+	label.style.color = inkOn(hex);
 
-	// Name and value go in as separate cells rather than as one string a line.
-	// The grid then holds all three values in a column of their own, so the
-	// notations stack as blocks to be looked down instead of as three
-	// sentences to be read across.
-	for (const [name, value] of notations(hex)) {
-		box.append(line(name), line(value));
-	}
-
-	return box;
+	return label;
 }
+
+// Fills a host with one color's three notations, each of them a control that
+// puts its own value on the clipboard.
+//
+// One place only: the copy panel, for whichever color the palette currently
+// has selected. Printing them on the bands as well put the same three lines on
+// screen twice, and gave the page two ways to ask for one color.
+//
+// Name and value go in as separate cells rather than as one string a line. The
+// grid then holds all three values in a column of their own, so the notations
+// stack as blocks to be looked down instead of as sentences to be read across.
+export function renderCodes(host, hex) {
+	host.replaceChildren();
+
+	for (const [name, value] of notations(hex)) {
+		const code = document.createElement('button');
+		code.type = 'button';
+		code.className = 'code-copy';
+
+		// What lands on the clipboard: the value alone, without the name in
+		// front of it. Nobody pastes "HEX" into a stylesheet.
+		code.dataset.copy = value;
+		code.setAttribute('aria-label', `Copy ${name} ${value}`);
+
+		code.append(line(name), line(value));
+		host.append(code);
+	}
+}
+
 
 // Hex for the web, RGB for anything else on a screen, CMYK for anything
 // printed. One source for both the printed block and the label, so the two

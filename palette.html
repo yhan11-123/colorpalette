@@ -98,6 +98,15 @@
 					<span class="label" id="copied" aria-live="polite"></span>
 				</div>
 				<pre class="code num" id="preview"></pre>
+
+				<!-- ---------- copy one color ----------
+				     The only place the three notations appear. The palette is
+				     the picker: a band carries its hex and nothing else, and
+				     choosing one brings its full reading here, where it stays
+				     put and can be read without holding a pointer anywhere. -->
+				<p class="label">Copy one color</p>
+				<p class="label" id="pick">Click a color in the palette.</p>
+				<div class="code-grid num" id="single"></div>
 			</section>
 
 		</div>
@@ -106,7 +115,7 @@
 		     Always on the page, never revealed. Showing and hiding it made the
 		     document jump the moment a color was clicked; standing waiting with
 		     an invitation costs one panel of height and nothing moves. -->
-		<section class="panel" id="matchPanel">
+		<section class="match-panel" id="matchPanel">
 
 			<div class="bar">
 				<div class="match-head">
