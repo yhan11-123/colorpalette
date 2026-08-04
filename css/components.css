@@ -931,24 +931,28 @@ main {
 	transition: opacity 120ms ease-out;
 }
 
-/* One block per notation, stacked. Two columns rather than three lines of
-   running text: the names go in the first and the values in the second, so the
-   numbers line up under each other and the three can be looked down rather
-   than read across.
+/* The three notations side by side, a column each — a specification for one
+   color rather than a list of three ways of saying it. Read across for what
+   the color is; read down a column for the numbers that make it up.
 
-   justify-content: start keeps both columns only as wide as their content, so
-   the block sits against the left of whatever holds it rather than stretching
-   to its width.
+   Three columns of one fixed width, not three sized to their contents. Left on
+   auto the hex column came out half as wide again as the other two — it holds
+   seven characters against their four — and since a gap is measured from where
+   the column ends rather than from where its text does, the space after "HEX"
+   read as half as much again as the space after "RGB". Equal columns are what
+   make an equal gap look equal.
 
-   One home only, in the copy panel. The bands carry a hex apiece and nothing
-   more; three notations in both places was the same reading printed twice on
-   one screen. */
+   Stated in ch because this is set in the mono face, where a character is a
+   fixed width and seven of them is exactly the hex.
+
+   justify-content: start holds the three together at the left of the panel
+   rather than spreading them across it. */
 .code-grid {
 	display: grid;
-	grid-template-columns: auto auto;
+	grid-template-columns: repeat(3, 7ch);
 	justify-content: start;
-	align-items: baseline;
-	gap: var(--s1) var(--s3);
+	align-items: start;
+	gap: var(--s7);
 
 	font-size: var(--t2);
 	line-height: var(--lh-label);
@@ -958,31 +962,32 @@ main {
 	white-space: nowrap;
 }
 
-/* One notation, one control. subgrid rather than a grid of its own: the name
-   and the value sit in the parent's two columns, so the three rows keep lining
-   up with each other even though each is a separate button. */
-.code-copy {
-	display: grid;
-	grid-template-columns: subgrid;
-	grid-column: span 2;
-	align-items: baseline;
-
-	padding: 0;
-	text-align: left;
-	cursor: copy;
-
-	/* A button normally refuses to have its text selected. These are numbers
-	   before they are controls, and taking one by dragging across it is the
-	   older habit — pressing it copies, but nothing here should stop a hand
-	   that would rather select it. */
-	user-select: text;
-	-webkit-user-select: text;
+.code-set {
+	display: flex;
+	flex-direction: column;
+	gap: var(--s1);
 }
 
-/* Said in the ink the code is already written in, so the confirmation carries
-   no color of its own onto the user's. */
-.code-copy.is-copied {
-	box-shadow: 0 0 0 2px currentColor;
+/* Channel and number, one line each. RGB is three numbers and CMYK four, and
+   run together they have to be counted through to find the one being looked
+   for — a letter in front of each ends that. */
+.code-values {
+	display: grid;
+	grid-template-columns: auto auto;
+	align-items: baseline;
+	gap: var(--s1) var(--s2);
+}
+
+/* The letter is the quieter half: the number is what is being read, the letter
+   only says which one it is. */
+.code-channel {
+	color: var(--text-muted);
+}
+
+/* The hex has no channels to name, so it takes the whole width rather than
+   sitting in the number column with a gap where a letter would go. */
+.code-whole {
+	grid-column: span 2;
 }
 
 .bar-large .swatch:hover .swatch-hex,

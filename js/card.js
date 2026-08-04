@@ -72,51 +72,65 @@ function hexLabel(hex) {
 	return label;
 }
 
-// Fills a host with one color's three notations, each of them a control that
-// puts its own value on the clipboard.
+// Fills a host with one color's three notations, side by side, one column
+// each.
+//
+// Text, not controls. Reading a value and taking a value are the same act with
+// a number this short — the cursor is already there, and a browser has known
+// how to copy selected text since before any of this. A button in front of
+// that is a step added, not a step saved.
 //
 // One place only: the copy panel, for whichever color the palette currently
 // has selected. Printing them on the bands as well put the same three lines on
 // screen twice, and gave the page two ways to ask for one color.
-//
-// Name and value go in as separate cells rather than as one string a line. The
-// grid then holds all three values in a column of their own, so the notations
-// stack as blocks to be looked down instead of as sentences to be read across.
 export function renderCodes(host, hex) {
 	host.replaceChildren();
 
-	for (const [name, value] of notations(hex)) {
-		const code = document.createElement('button');
-		code.type = 'button';
-		code.className = 'code-copy';
+	for (const { name, parts } of notations(hex)) {
+		const set = document.createElement('div');
+		set.className = 'code-set';
 
-		// What lands on the clipboard: the value alone, without the name in
-		// front of it. Nobody pastes "HEX" into a stylesheet.
-		code.dataset.copy = value;
-		code.setAttribute('aria-label', `Copy ${name} ${value}`);
+		const title = document.createElement('p');
+		title.className = 'label';
+		title.textContent = name;
 
-		code.append(line(name), line(value));
-		host.append(code);
+		const values = document.createElement('div');
+		values.className = 'code-values';
+
+		for (const [channel, value] of parts) {
+			// The hex has no channels to name — one number is the whole of it,
+			// so it takes both columns rather than sitting in the second with
+			// an empty cell beside it.
+			if (channel) values.append(line(channel, 'code-channel'));
+			values.append(line(value, channel ? '' : 'code-whole'));
+		}
+
+		set.append(title, values);
+		host.append(set);
 	}
 }
 
 
 // Hex for the web, RGB for anything else on a screen, CMYK for anything
-// printed. One source for both the printed block and the label, so the two
-// cannot drift apart.
+// printed — and each one split into the numbers it is actually made of.
+//
+// RGB is not a value, it is three; CMYK is four. Run together as "199 193 157"
+// they have to be counted through to find the blue, and the reader is doing
+// arithmetic on positions to read a color they can see.
 function notations(hex) {
 	const { r, g, b } = hexToRgb255(hex);
 	const { c, m, y, k } = hexToCmyk(hex);
 
 	return [
-		['HEX', hex.toUpperCase()],
-		['RGB', `${r} ${g} ${b}`],
-		['CMYK', `${c} ${m} ${y} ${k}`],
+		{ name: 'HEX', parts: [[null, hex.toUpperCase()]] },
+		{ name: 'RGB', parts: [['R', r], ['G', g], ['B', b]] },
+		{ name: 'CMYK', parts: [['C', c], ['M', m], ['Y', y], ['K', k]] },
 	];
 }
 
-function line(text) {
+function line(text, className = '') {
 	const span = document.createElement('span');
+	if (className) span.className = className;
 	span.textContent = text;
 	return span;
 }

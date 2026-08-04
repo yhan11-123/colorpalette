@@ -73,11 +73,6 @@ async function init() {
 		if (swatch) selectColor(Number(swatch.dataset.index));
 	});
 
-	ui.single.addEventListener('click', event => {
-		const code = event.target.closest('.code-copy');
-		if (code) copyCode(code);
-	});
-
 	// The rail is a path in pixels, and the frame is sized in --unit, which is
 	// a share of the viewport below 680px. A window that changes width there
 	// changes the shape the text has to travel, so the path is rebuilt — but
@@ -314,15 +309,6 @@ function renderSingle() {
 }
 
 
-/* ---------- copying one code ---------- */
-// The panel below copies the whole palette in a format meant for a file. This
-// copies one number as it is written, because most of the time what is wanted
-// out of an archive is a single color out of a single palette.
-
-const COPIED_MARK = 1400;
-
-let copiedFor = null;
-
 // True when the click that just happened was the end of a drag across text
 // inside this element. Someone who went to the trouble of highlighting four of
 // the six digits did not mean to press anything.
@@ -335,27 +321,6 @@ function dragged(target) {
 	return Boolean(selection)
 		&& !selection.isCollapsed
 		&& target.contains?.(selection.anchorNode);
-}
-
-async function copyCode(button) {
-	if (dragged(button)) return;
-
-	const value = button.dataset.copy;
-
-	await copyText(value, `${value} copied`);
-
-	// The confirmation from copyText lands in the panel beside the palette,
-	// which is a column away from the code that was pressed. This says it at
-	// the code as well. Only one at a time — the previous mark is cleared
-	// rather than left to time out on its own, so two quick copies do not
-	// leave two things claiming to have just happened.
-	clearTimeout(copiedFor);
-	for (const marked of ui.detail.querySelectorAll('.code-copy.is-copied')) {
-		marked.classList.remove('is-copied');
-	}
-
-	button.classList.add('is-copied');
-	copiedFor = setTimeout(() => button.classList.remove('is-copied'), COPIED_MARK);
 }
 
 
