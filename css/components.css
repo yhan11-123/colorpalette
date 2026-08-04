@@ -719,16 +719,20 @@ main {
    where; this says what — and a flat run of the color on a plain surface is
    the only way to see it without the photograph underneath arguing with it.
 
-   A unit and a half wide, so it stays on the same grid the cards are drawn on
-   — one color is one --unit everywhere else — while being long enough to read
-   as a length of color rather than as a chip of one. A color needs some run to
-   be judged; a small square of it is a label.
+   Two units wide and half a card tall — both taken from the grid the archive
+   is drawn on, so they grow and shrink with everything else rather than being
+   two numbers of their own.
 
-   Still shallow next to its length. Height is what the tray and the cards use
-   to mean a palette, and these are candidates for one rather than one yet. */
+   Big enough to be judged, which is the whole reason they were lifted off the
+   photograph. A color read in a thin strip is read mostly through whatever it
+   is next to; given some area it starts to be itself, and the choice between
+   these seven stops being a guess.
+
+   Still wider than it is tall. Height is what the tray and the cards use to
+   mean a palette, and these are candidates for one rather than one yet. */
 .extract {
-	width: calc(var(--unit) * 1.5);
-	height: var(--s6);
+	width: calc(var(--unit) * 2);
+	height: calc(var(--card-height) / 2);
 	border: 1px solid var(--line);
 }
 
