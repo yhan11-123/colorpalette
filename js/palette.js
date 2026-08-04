@@ -22,7 +22,7 @@ const ui = {
 	catalog: el('catalog'),
 	large: el('large'), track: el('track'), twin: el('twin'),
 	preview: el('preview'), copied: el('copied'),
-	pick: el('pick'), single: el('single'),
+	single: el('single'),
 	matchChip: el('matchChip'), matchCount: el('matchCount'),
 	matches: el('matches'),
 	threshold: el('threshold'), thresholdLabel: el('thresholdLabel'),
@@ -305,8 +305,6 @@ function guessCodeWidth(text) {
 function renderSingle() {
 	const color = selected === null ? null : palette.colors[selected];
 
-	ui.pick.hidden = color !== null;
-
 	if (!color) {
 		ui.single.replaceChildren();
 		return;
@@ -407,11 +405,6 @@ async function copyText(text, message) {
 
 /* ---------- the color filter ---------- */
 
-// Must read the same as the copy sitting in palette.html — that one is what is
-// on screen before this file runs, and this one replaces it when a color is
-// released. Two wordings would look like the panel changed its mind.
-const PROMPT = 'Click a color in the palette to see every other palette that contains it.';
-
 function selectColor(index) {
 	selected = selected === index ? null : index;
 
@@ -424,12 +417,13 @@ function selectColor(index) {
 	renderSingle();
 
 	if (selected === null) {
-		// Back to the invitation. The panel itself stays where it is, so
-		// releasing a color does not collapse the page either.
+		// Back to nothing said. The slider stays where it is, so releasing a
+		// color does not collapse the page either — what was here is simply
+		// not here any more, which is the whole account of it.
 		latestRun++;                       // abandon any query still in flight
 		ui.matchChip.classList.add('is-hidden');
 		ui.matchCount.className = 'label';
-		ui.matchCount.textContent = PROMPT;
+		ui.matchCount.textContent = '';
 		ui.matches.replaceChildren();
 		return;
 	}
@@ -472,7 +466,11 @@ async function runFilter() {
 	if (run !== latestRun) return;
 
 	ui.matchCount.textContent = describe(total, capped, color.hex);
-	renderWall(ui.matches, palettes, { empty: onlyOne() });
+
+	// No empty state. The count above already says a color is the only one of
+	// its kind, and a second sentence underneath saying it again — with advice
+	// about the slider attached — was the same fact twice and a lesson on top.
+	renderWall(ui.matches, palettes);
 }
 
 function describe(total, capped, hex) {
@@ -484,11 +482,3 @@ function describe(total, capped, hex) {
 		: `${total} other palettes contain ${hex}${shown}`;
 }
 
-// Zero matches is information, not failure. Presented as rarity, it turns into
-// something worth hunting for.
-function onlyOne() {
-	const p = document.createElement('p');
-	p.className = 'empty';
-	p.textContent = 'Nobody else has used this color. Tighten or loosen the slider to see how close anything gets.';
-	return p;
-}

@@ -46,15 +46,17 @@
 		     No empty slots are drawn: six visible boxes read as homework. -->
 		<section class="tray-area">
 			<div class="tray" id="tray" aria-label="Palette being built"></div>
-			<p class="empty" id="trayHint">Set a color below, then add it. Two colors is a palette.</p>
 
 			<!-- Register lives here because it acts on the palette, not on a
 			     color. Adding a color belongs to whichever mode produced it,
-			     so each panel carries its own Add. -->
+			     so each panel carries its own Add.
+
+			     The count is the only text here. What the tray is for, how a
+			     color gets into it and how one comes out are all things the
+			     controls themselves say by being pressed. -->
 			<div class="tray-actions">
 				<button type="button" class="btn btn--primary" id="register" disabled>Register</button>
 				<span class="label num" id="trayCount">0 colors</span>
-				<span class="label" id="trayRemoveHint"></span>
 			</div>
 		</section>
 
@@ -98,7 +100,7 @@
 						<input class="input num" id="hex" type="text" spellcheck="false" size="9">
 					</label>
 					<p class="label num" id="oklchOut">—</p>
-					<p class="label" id="editing">Editing the next color</p>
+					<p class="label" id="editing"></p>
 				</div>
 			</div>
 
@@ -131,7 +133,6 @@
 			<!-- Where the color was tuned is where it goes in. -->
 			<div class="panel__actions">
 				<button type="button" class="btn" id="add">Add color</button>
-				<span class="label">into the tray above</span>
 			</div>
 
 		</section>
@@ -171,7 +172,6 @@
 				<span class="chip chip--lg" id="pickedChip"></span>
 				<div class="picked__meta">
 					<span class="num" id="pickedHex"></span>
-					<span class="label">held in the picker — not in the palette yet</span>
 				</div>
 				<button type="button" class="btn" id="pickedAdd">Add color</button>
 			</div>

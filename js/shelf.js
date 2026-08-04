@@ -41,14 +41,19 @@ async function load() {
 		: `${palettes.length} palettes`;
 }
 
-// Not "no saved palettes" — how to get one. An empty screen is an invitation.
+// A shelf with nothing on it is indistinguishable from one that failed to
+// load, so it says which. A way out, and no lesson attached.
+//
+// The saved side no longer tells anyone to press Save: there is no Save button
+// on a palette any more, and copy that names a control which is not there is
+// worse than none.
 function emptyState() {
 	const p = document.createElement('p');
 	p.className = 'empty';
 
 	p.innerHTML = tab === 'made'
-		? 'Nothing made yet. <a href="index.html">Build a palette</a> — two colors is enough.'
-		: 'Nothing saved yet. Open any palette in the <a href="archive.html">archive</a> and press Save.';
+		? 'Nothing made yet. <a href="index.html">Make one</a>.'
+		: 'Nothing saved yet.';
 
 	return p;
 }

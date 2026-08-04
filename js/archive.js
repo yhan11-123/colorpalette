@@ -49,12 +49,13 @@ async function load() {
 		: `${palettes.length} palettes`;
 }
 
-// An empty screen is an invitation to act, not a notice that something is
-// missing — so this says how to fill it rather than that it is empty.
+// The one place a sentence is still worth its space: a wall with nothing on it
+// is indistinguishable from a wall that failed to load. A way out, and no
+// lesson attached.
 function emptyState() {
 	const el = document.createElement('p');
 	el.className = 'empty';
-	el.innerHTML = 'The archive starts with your first palette. <a href="index.html">Make one</a>.';
+	el.innerHTML = 'Nothing here yet. <a href="index.html">Make one</a>.';
 	return el;
 }
 

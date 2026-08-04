@@ -704,20 +704,27 @@ main {
 	gap: var(--s2);
 }
 
-/* Square, where the marks on the image are round. The ring says where; this
-   says what — and a flat square of it on a plain surface is the only way to
-   see the color without the photograph underneath arguing with it. */
+/* A wide, shallow band, where the marks on the image are round. The ring says
+   where; this says what — and a flat run of the color on a plain surface is
+   the only way to see it without the photograph underneath arguing with it.
+
+   One --unit wide, which is what one color is worth everywhere else on the
+   site: a card of n colors is n units across, and a color read off a photograph
+   is the same size as a color already in the archive. Shallow, because these
+   are samples of a color rather than colors in a palette — height is what the
+   tray and the cards use to mean a palette, and this is not one yet. */
 .extract {
-	width: var(--s7);
-	height: var(--s7);
+	width: var(--unit);
+	height: var(--s5);
 	border: 1px solid var(--line);
 }
 
 /* Taken. Two inset hairlines, white then black — the same mark a chosen color
    carries everywhere else on the site, legible on any color and bringing no
-   hue of its own. */
+   hue of its own. Drawn a step finer here: at the usual 2 and 4 the pair would
+   take a third of a band this shallow. */
 .extract.is-picked {
-	box-shadow: inset 0 0 0 2px #fff, inset 0 0 0 4px #000;
+	box-shadow: inset 0 0 0 1px #fff, inset 0 0 0 2px #000;
 }
 
 .picked {

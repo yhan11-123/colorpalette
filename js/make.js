@@ -15,8 +15,21 @@ import {
 } from './color.js';
 
 import { renderSwatches } from './card.js';
-import { createPalette } from './db.js';
 import { mountImageMode } from './extract.js';
+
+// Started with the page, deliberately not awaited.
+//
+// db.js does not finish loading until the database is reachable: it pulls the
+// client off a CDN and opens an anonymous session, both at the top level of the
+// module. A plain import here would put that in front of everything below it,
+// because a module body does not run until its imports have finished — so on a
+// cold load the whole screen sat unpainted for as long as the network took, the
+// three sliders showing their bare grey instead of the colors they are for.
+//
+// Nothing on this screen needs a database until Register is pressed. The
+// request goes out with the page and is waited for there, by which time it has
+// almost always long since landed.
+const database = import('./db.js');
 
 // No ceiling on color count. Below two there is nothing to combine, so that
 // floor stays — it is what makes the thing a palette rather than a color.
@@ -42,8 +55,7 @@ let draftSource = 'picker';
 const el = id => document.querySelector('#' + id);
 
 const ui = {
-	tray: el('tray'), trayHint: el('trayHint'), trayCount: el('trayCount'),
-	trayRemoveHint: el('trayRemoveHint'),
+	tray: el('tray'), trayCount: el('trayCount'),
 	add: el('add'), register: el('register'),
 	spreadL: el('spreadL'), spreadC: el('spreadC'), spreadH: el('spreadH'),
 	preview: el('preview'), hex: el('hex'), editing: el('editing'),
@@ -90,11 +102,7 @@ function render() {
 	});
 
 	ui.tray.classList.toggle('is-empty', tray.length === 0);
-	ui.trayHint.classList.toggle('is-hidden', tray.length > 0);
 	ui.trayCount.textContent = tray.length === 1 ? '1 color' : `${tray.length} colors`;
-	ui.trayRemoveHint.textContent = tray.length > 1
-		? 'drag to reorder · hover a color to remove it'
-		: tray.length ? 'hover a color to remove it' : '';
 
 	// Add is never disabled — color count is not a setting, it is when you stop.
 	ui.register.disabled = tray.length < MIN_COLORS;
@@ -139,9 +147,9 @@ function renderPicker() {
 	ui.sc.style.background = ramp(i => `oklch(${l} ${(i / 10) * MAX_CHROMA} ${h})`, 10);
 	ui.sh.style.background = ramp(i => `oklch(${l} ${Math.max(c, 0.08)} ${i * 30})`, 12);
 
-	ui.editing.textContent = selected === null
-		? 'Editing the next color'
-		: `Editing color ${selected + 1} — click it again to release`;
+	// Which color the sliders are holding, and nothing about how to let go of
+	// it. Empty when it is a new one, because then there is nothing to name.
+	ui.editing.textContent = selected === null ? '' : `Color ${selected + 1}`;
 
 	renderReadouts(hex, { l, c, h });
 }
@@ -373,6 +381,10 @@ ui.register.addEventListener('click', async () => {
 	ui.register.textContent = 'Registering…';
 
 	try {
+		// Where the wait for the database actually belongs: at the one moment
+		// something is being asked of it, with the button already saying so.
+		const { createPalette } = await database;
+
 		const palette = await createPalette(trayColors());
 
 		// The archive already held this exact palette, so nothing was written

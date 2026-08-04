@@ -75,7 +75,12 @@ export function mountImageMode({ onPick, onAdd }) {
 			await draw(chosen);
 			clearPick();
 			markCandidates();
-			hint.textContent = 'Click anywhere to take that color. Marked points are suggestions.';
+
+			// Cleared rather than replaced with instructions. The rings, the
+			// loupe following the pointer and the squares below are the whole
+			// explanation; a sentence saying the same thing is one more thing
+			// to read before touching anything.
+			hint.textContent = '';
 		} catch {
 			hint.textContent = 'That file could not be read as an image. Try a JPEG or PNG.';
 		}
