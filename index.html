@@ -145,6 +145,14 @@
 			<div class="file-row">
 				<label class="btn" for="file">Choose photo</label>
 				<input id="file" type="file" accept="image/*" capture="environment" class="visually-hidden">
+
+				<!-- The one thing on this screen that has to be said rather
+				     than found. Dropping a file leaves no mark on a page until
+				     a file is already in the hand, so there is nothing to try:
+				     without this line the whole gesture is invisible to anyone
+				     who does not happen to guess at it. -->
+				<span class="label">or drop one anywhere</span>
+
 				<span class="label" id="fileHint">The photo stays in your browser. Nothing is uploaded.</span>
 			</div>
 
