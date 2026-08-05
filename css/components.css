@@ -52,18 +52,20 @@
 	border-bottom: 1px solid var(--line);
 }
 
+/* --t4, a step above everything else in the masthead. At --t3 the name sat at
+   body size and had only its weight to lead with; the page is named here, and
+   the name should be the first thing read on it. */
 .brand {
-	font-size: var(--t3);
+	font-size: var(--t4);
 	font-weight: var(--w-medium);
 }
 
-/* One step up the scale, to --t3 — the same size as the name above it. Under
-   the title rather than tucked into a corner, the destinations are half of what
-   the masthead is for, and 13px read as a footnote to it.
+/* --t3, one step under the name and one step over --t2. Under the title rather
+   than tucked into a corner, the destinations are half of what the masthead is
+   for, and 13px read as a footnote to it.
 
-   The name still leads: it holds the size with --w-medium behind it while these
-   stay regular and muted. Weight and color do the separating, which is how
-   everything else on this site is told apart too. */
+   The name still leads, now on size as well as weight, while these stay regular
+   and muted. */
 .nav {
 	display: flex;
 	gap: var(--s4);
@@ -1118,7 +1120,16 @@ main {
 	flex-wrap: wrap;
 	justify-content: center;
 	align-items: stretch;
-	gap: var(--s5);
+
+	/* --s8, the top of the scale. The two are one object, but at --s5 they read
+	   as one block split by a seam rather than as a palette and the thing that
+	   copies it. Across 960px of pair, 24px is not enough air to tell them
+	   apart, and the pair is wide enough to carry the largest step the scale
+	   has without the gap becoming the loudest thing in the row.
+
+	   It costs 40px of wrap threshold — the pair now needs 1072px to stand side
+	   by side rather than 1032 — which no real window notices. */
+	gap: var(--s8);
 }
 
 /* Five units each. The width is set by the copy panel: four buttons at 13px
