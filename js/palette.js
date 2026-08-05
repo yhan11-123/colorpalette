@@ -5,7 +5,8 @@
 
 import { getPalette, findPalettesByColor } from './db.js';
 import { renderSwatches, renderWall, renderCodes } from './card.js';
-import { oklabToOklch } from './color.js';
+import { oklabToOklch, oklabToHex } from './color.js';
+import { getView, onView } from './view.js';
 
 // SPEC §3.2. Named, because the user reads these as focus settings rather than
 // as numbers — the slider feels like focusing a lens.
@@ -82,6 +83,10 @@ async function init() {
 		const { width, height } = ui.track.parentElement.getBoundingClientRect();
 		if (`${Math.round(width)}x${Math.round(height)}` !== railBuiltFor) renderTrack();
 	}).observe(ui.track.parentElement);
+
+	// The ring is made of the shape the site is in, and that is a choice made on
+	// another screen. CSS cannot restroke a path, so this one has to be rebuilt.
+	onView(renderTrack);
 }
 
 
@@ -93,35 +98,58 @@ async function init() {
 // one line with no joins rather than four sides that meet.
 
 const SVG = 'http://www.w3.org/2000/svg';
-const XML = 'http://www.w3.org/XML/1998/namespace';
-
 // Pixels a second. The duration is worked out from this rather than the other
-// way round: the loop is one palette's worth of text long, and that length
-// depends on how many colors the palette has, so a fixed duration would run a
-// two-color palette at a quarter the speed of a nine-color one. Speed is what
-// should be the same from palette to palette.
+// way round: one cycle of the pattern is as long as the palette has colors, so
+// a fixed duration would run a two-color palette at a fraction of the speed of
+// a nine-color one. Speed is what should be the same from palette to palette.
 const SPEED = 50;
 
-const CODE = 8;               // characters in "#RRGGBB " — the same for every color
-
-// Laps of text written for a ring one lap around, and the reason the ring is
-// never caught half empty.
+// How the ring is made, per shape the site is in.
 //
-// Two was the obvious number — one lap on the path and one queued behind it —
-// but two leaves nothing to spare: at the start of the cycle the first lap has
-// just gone off the front, and the ring is standing on the second one alone.
-// Any shortfall in the fit, and the far side of the ring has nothing on it
-// until the animation has carried the rest round.
-//
-// Three keeps a whole lap in hand at each end. The path is covered at every
-// offset the animation passes through, from the first frame on.
-const LAPS = 3;
+//   step    — how long one piece should be, roughly. The exact length is worked
+//             out from it so that a whole number of pieces fits the ring.
+//   width   — the stroke, from that length: the thickness of the band.
+//   cap     — butt gives a piece with square ends that meets its neighbour
+//             flush; round turns a piece of no length at all into a dot.
+//   dot     — draw points rather than lengths, so the cap is the whole shape.
+//   overlap — how far a piece runs past its own slot. 1 is flush.
+//   steps   — how many pieces one cycle holds. The colors themselves for boxes
+//             and circles; for the bar, the palette blended into far more.
+const RING = {
+	box: {
+		step: 24,
+		width: seg => seg,
+		cap: 'butt',
+	},
+	circle: {
+		step: 28,
+		width: seg => seg * 1.6,     // wider than its spacing, so they overlap
+		cap: 'round',
+		dot: true,
+	},
+	bar: {
+		// Fine enough that no single piece reads as a piece. At 24px a band of
+		// flat color is a step in a staircase; at this size the difference from
+		// one to the next is smaller than the eye separates, and the ring reads
+		// as one length of color changing along itself.
+		step: 9,
 
-// The advance of a code in a typical monospace face, as a fraction of the font
-// size. Only a starting guess for how many codes a lap holds — the exact fit is
-// forced afterwards, so being a little out here costs nothing but a hair of
-// letter spacing.
-const CODE_EM = 0.6;
+		width: () => 24,
+		cap: 'butt',
+
+		// A hair over its slot, so neighbours meet under each other rather than
+		// against each other. Two dashes that end exactly where the next begins
+		// leave a half-transparent hairline between them on a curve — the
+		// antialiasing of two edges in the same place — and a ring of those
+		// reads as segmented however small the color step is.
+		overlap: 1.06,
+
+		// Around 72 pieces to a cycle whatever the palette holds, so a
+		// two-color palette gets a long blend between its two and a nine-color
+		// one is not drawn three hundred times over.
+		steps: colors => blend(colors, Math.max(4, Math.round(72 / colors.length))),
+	},
+};
 
 // What the rail was last built for. The frame follows --unit, which follows the
 // viewport, so a resize needs a new path — but a resize that leaves the frame
@@ -175,115 +203,100 @@ function renderTrack() {
 		Math.min(width, height) / 2 - inset,
 	);
 
-	const rail = node('path', {
-		id: 'rail',
-		fill: 'none',
-		d: railPath(width, height, inset, radius),
-	});
-
-	const defs = node('defs');
-	defs.append(rail);
-
-	const stream = node('textPath', { href: '#rail' });
-
-	const text = node('text', { class: 'frame-rail' });
-
-	// Without this the renderer collapses the space each code ends with and the
-	// stream comes out as one unbroken run of hex digits.
-	text.setAttributeNS(XML, 'xml:space', 'preserve');
-	text.append(stream);
+	const d = railPath(width, height, inset, radius);
 
 	const svg = node('svg', { viewBox: `0 0 ${width} ${height}` });
-	svg.append(defs, text);
-
 	ui.track.replaceChildren(svg);
 
-	// In the document now, so the path has a length to write against.
-	const lap = rail.getTotalLength();
-
-	// One palette, purely to see how wide a code comes out in whatever font
-	// the machine actually had for --font-num.
-	write(stream, palette.colors.length);
-	const codeWidth = measure(text, CODE) || guessCodeWidth(text);
-
-	const perLap = whole(lap / codeWidth, palette.colors.length);
-
-	stream.replaceChildren();
-	write(stream, perLap * LAPS);
-
-	// The exact fit, and the whole reason the ring can be endless.
+	// The ring is drawn as one path, stroked several times over with a dashed
+	// pattern — not as a row of shapes placed along it.
 	//
-	// Left at its natural width the text lands a few pixels short of the corner
-	// it set out from, or a few past it — and since the path is closed, that
-	// corner is where the end of the line and the start of it are the same
-	// point. The mismatch sits there for ever, and every restart of the loop
-	// jumps by it. Forcing the length instead makes one lap of text exactly one
-	// lap of path, so the last code meets the first and the seam closes.
+	// Shapes placed one by one leave wedges of daylight on the outside of every
+	// corner: a straight thing tangent to a curve cannot meet the next straight
+	// thing. A dash follows the path itself, so it bends round the corner and
+	// meets its neighbour there as flush as it does on the straight.
 	//
-	// Set on the textPath rather than on the text around it: the glyphs are
-	// laid out here, against the path, and this is the element every engine
-	// agrees the measurement belongs to.
+	// Each color gets its own copy of the path, dashed to show one piece in
+	// every n and phased so it lands in its own slot. Together they tile the
+	// ring with nothing between them.
+	const spec = RING[getView()] ?? RING.box;
+	const colors = spec.steps ? spec.steps(palette.colors) : palette.colors.map(c => c.hex);
+	const n = colors.length;
+
+	// One measurement, from a path that is thrown away — a stroke of zero
+	// length still has a length to report.
+	const probe = node('path', { d, fill: 'none' });
+	svg.append(probe);
+	const lap = probe.getTotalLength();
+	probe.remove();
+
+	if (!lap) return;
+
+	// The whole reason the ring can be endless. The pattern has to divide the
+	// circumference exactly, or the piece that meets the start of the path is a
+	// part-piece and the join shows at that one corner for ever. So the piece
+	// length is not chosen — the number of them is, and the length follows.
+	const cycles = Math.max(1, Math.round(lap / (n * spec.step)));
+	const seg = lap / (cycles * n);
+	const period = seg * n;
+
+	// A dot has no length: the round cap is the whole of it. A box or a band is
+	// the length itself, or a little more where the pieces are meant to close
+	// over each other rather than meet.
 	//
-	// lengthAdjust: spacing puts the correction between the glyphs rather than
-	// inside them — the codes keep their shape, the gaps take up the slack.
-	stream.setAttribute('textLength', lap * LAPS);
-	stream.setAttribute('lengthAdjust', 'spacing');
+	// The pattern still repeats every period whatever the dash does, so a piece
+	// running long borrows from the empty run behind it and the tiling holds.
+	const dash = spec.dot ? 0.01 : seg * (spec.overlap ?? 1);
 
-	// Where the animation begins, stated on the element as well, so the first
-	// frame drawn is already the frame the loop keeps returning to rather than
-	// a lap's worth of text sitting in a different place for one paint.
-	stream.setAttribute('startOffset', -lap);
+	svg.style.setProperty('--n', n);
+	svg.style.setProperty('--travel', `${-period}px`);
+	svg.style.setProperty('--lap', `${(period / SPEED).toFixed(3)}s`);
 
-	// Exactly one lap per cycle. Sliding by the full circumference lands the
-	// next lap of text precisely where the last one was, so the moment the
-	// animation restarts is the moment nothing changes.
-	if (!matchMedia('(prefers-reduced-motion: reduce)').matches) {
-		stream.append(node('animate', {
-			attributeName: 'startOffset',
-			from: -lap,
-			to: 0,
-			dur: `${(lap / SPEED).toFixed(2)}s`,
-			repeatCount: 'indefinite',
-		}));
+	colors.forEach((hex, i) => {
+		const run = node('path', {
+			class: 'ring-run',
+			d,
+			fill: 'none',
+			stroke: hex,
+			'stroke-width': spec.width(seg),
+			'stroke-linecap': spec.cap,
+			'stroke-dasharray': `${dash} ${period - dash}`,
+		});
+
+		// Which slot this color occupies. CSS turns it into a delay, which is
+		// the same thing as a head start along the path — so the phase and the
+		// motion are one animation instead of two numbers to keep in step.
+		run.style.setProperty('--i', i);
+
+		svg.append(run);
+	});
+}
+
+// The palette blended into far more colors than it has, wrapping from the last
+// back to the first so the ring closes on itself rather than meeting a hard
+// edge where the sequence restarts.
+//
+// Mixed in OKLab, like everything else here: the midpoint between two colors
+// has to be the one the eye would call the midpoint, and in RGB it is not.
+function blend(colors, steps) {
+	const out = [];
+
+	for (let i = 0; i < colors.length; i++) {
+		const from = colors[i].oklab;
+		const to = colors[(i + 1) % colors.length].oklab;
+
+		for (let s = 0; s < steps; s++) {
+			const t = s / steps;
+
+			out.push(oklabToHex({
+				l: from.l + (to.l - from.l) * t,
+				a: from.a + (to.a - from.a) * t,
+				b: from.b + (to.b - from.b) * t,
+			}));
+		}
 	}
-}
 
-function write(host, codes) {
-	const { colors } = palette;
-
-	for (let i = 0; i < codes; i++) {
-		const { hex } = colors[i % colors.length];
-
-		const code = node('tspan', { fill: hex });
-		code.textContent = `${hex.toUpperCase()} `;
-
-		host.append(code);
-	}
-}
-
-// Rounded to whole palettes, at least one. A lap that ended part-way through
-// the sequence would restart it mid-palette at the corner, which is the one
-// place on the ring where the join can be seen.
-function whole(codes, size) {
-	return Math.max(1, Math.round(codes / size)) * size;
-}
-
-// How far along the path the first n characters reach. Asked of the text
-// itself rather than worked out from the font size, because the font here is
-// whichever of --font-num the machine actually has.
-function measure(text, chars) {
-	try {
-		return text.getSubStringLength(0, chars) || 0;
-	} catch {
-		return 0;
-	}
-}
-
-// Only reached if the engine refuses to measure. Being wrong here spreads the
-// codes a little thin or a little tight; it cannot break the loop, because the
-// fit is forced either way.
-function guessCodeWidth(text) {
-	return parseFloat(getComputedStyle(text).fontSize) * CODE_EM * CODE;
+	return out;
 }
 
 

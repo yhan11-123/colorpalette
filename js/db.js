@@ -85,7 +85,6 @@ function announce(message) {
 
 const LS = {
 	palettes: 'color-archive:palettes',
-	saves: 'color-archive:saves',
 	user: 'color-archive:user',
 };
 
@@ -130,10 +129,6 @@ function createLocalBackend() {
 			return all().find(p => p.id === id) ?? null;
 		},
 
-		async listMade() {
-			return all().filter(p => p.ownerId === userId);
-		},
-
 		async createPalette(colors) {
 			const rows = read(LS.palettes, []);
 
@@ -159,26 +154,6 @@ function createLocalBackend() {
 			rows.push(palette);
 			write(LS.palettes, rows);
 			return palette;
-		},
-
-		async listSaved() {
-			const ids = new Set(read(LS.saves, []));
-			return all().filter(p => ids.has(p.id));
-		},
-
-		async isSaved(id) {
-			return read(LS.saves, []).includes(id);
-		},
-
-		async toggleSave(id) {
-			const ids = read(LS.saves, []);
-			const at = ids.indexOf(id);
-
-			if (at === -1) ids.push(id);
-			else ids.splice(at, 1);
-
-			write(LS.saves, ids);
-			return at === -1;
 		},
 
 		async candidatesNear(oklab, threshold) {
@@ -222,12 +197,13 @@ async function createSupabaseBackend() {
 
 	// SPEC §4: anonymous ownership — and here it is the ONLY kind. There is no
 	// sign-in anywhere in this site. A row in auth.users appears on the first
-	// visit and is what owns the palettes you register and the ones you save;
-	// nobody is ever asked for an address, so nothing gates making.
+	// visit and is what owns the palettes registered from this browser; nobody
+	// is ever asked for an address, so nothing gates making.
 	//
-	// The cost, accepted deliberately: a shelf belongs to a browser. Clear the
-	// site's data or move to another device and it is gone. Carrying a shelf
-	// between devices is exactly what an account was for.
+	// Ownership is now only ever written, never read: what a palette is worth
+	// here is being in the archive, which is one thing shown to everyone. There
+	// is no personal list to belong to, so there is nothing an account would
+	// carry between devices.
 	let { data: { session } } = await sb.auth.getSession();
 
 	if (!session) {
@@ -318,13 +294,6 @@ async function createSupabaseBackend() {
 			return rows.length ? toPalette(rows[0]) : null;
 		},
 
-		async listMade() {
-			if (!userId) return [];
-			return unwrap(await sb.from('palettes').select(SELECT)
-				.eq('owner_id', userId)
-				.order('created_at', { ascending: false })).map(toPalette);
-		},
-
 		async createPalette(colors) {
 			// Without a session, RLS rejects the insert and reports a policy
 			// violation — true, but it points at the schema instead of at the
@@ -365,32 +334,6 @@ async function createSupabaseBackend() {
 			return this.getPalette(palette.id);
 		},
 
-		async listSaved() {
-			if (!userId) return [];
-			const rows = unwrap(await sb.from('saves')
-				.select(`created_at, palettes ( ${SELECT} )`)
-				.eq('user_id', userId)
-				.order('created_at', { ascending: false }));
-
-			return rows.map(r => toPalette(r.palettes));
-		},
-
-		async isSaved(id) {
-			if (!userId) return false;
-			const rows = unwrap(await sb.from('saves').select('palette_id')
-				.eq('user_id', userId).eq('palette_id', id));
-			return rows.length > 0;
-		},
-
-		async toggleSave(id) {
-			if (await this.isSaved(id)) {
-				unwrap(await sb.from('saves').delete()
-					.eq('user_id', userId).eq('palette_id', id));
-				return false;
-			}
-			unwrap(await sb.from('saves').insert({ user_id: userId, palette_id: id }));
-			return true;
-		},
 
 		async candidatesNear({ l, a, b }, t) {
 			// SPEC §5 step 2. The index on (ok_l, ok_a, ok_b) makes this cheap;
@@ -430,16 +373,11 @@ const backend = usingSupabase ? await createSupabaseBackend() : createLocalBacke
 export const backendName = backend.name;
 
 // The archive wall, with any repeat already in the database collapsed to the
-// one entry. Only here: the shelf is a personal list and shows what its owner
-// made or saved, and the color filter counts palettes before it fetches them,
-// so hiding one there would leave the count disagreeing with the cards.
+// one entry. Only here: the color filter counts palettes before it fetches
+// them, so hiding one there would leave the count disagreeing with the cards.
 export const listPalettes = async (...args) => dedupe(await backend.listPalettes(...args));
 export const getPalette = (...args) => backend.getPalette(...args);
 export const createPalette = (...args) => backend.createPalette(...args);
-export const listMade = (...args) => backend.listMade(...args);
-export const listSaved = (...args) => backend.listSaved(...args);
-export const isSaved = (...args) => backend.isSaved(...args);
-export const toggleSave = (...args) => backend.toggleSave(...args);
 
 
 // SPEC §5, steps 3–6. The bounding box above is a cube; the real question is a

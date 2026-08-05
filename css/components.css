@@ -29,14 +29,23 @@
 	background: var(--surface);
 }
 
+/* Stacked and centred: the name of the place, and under it the ways through
+   it. A masthead rather than a toolbar — nothing here is a control, so nothing
+   needs to sit where a hand expects a control to be, and the page below can
+   start from the middle the way the palettes on it do. */
 .topbar {
 	display: flex;
-	flex-wrap: wrap;
-	gap: var(--s4);
-	align-items: baseline;
-	justify-content: space-between;
+	flex-direction: column;
+	align-items: center;
+	gap: var(--s3);
 
+	/* Air above the name, and not much below it. A masthead wants the page to
+	   begin a little way down rather than at the very top edge of the window —
+	   the space is what makes it read as a title rather than as the first row
+	   of the content. */
+	padding-top: var(--s8);
 	padding-bottom: var(--s4);
+
 	margin-bottom: var(--s6);
 	border-bottom: 1px solid var(--line);
 }
@@ -46,22 +55,30 @@
 	font-weight: var(--w-medium);
 }
 
+/* One step up the scale, to --t3 — the same size as the name above it. Under
+   the title rather than tucked into a corner, the destinations are half of what
+   the masthead is for, and 13px read as a footnote to it.
+
+   The name still leads: it holds the size with --w-medium behind it while these
+   stay regular and muted. Weight and color do the separating, which is how
+   everything else on this site is told apart too. */
 .nav {
 	display: flex;
 	gap: var(--s4);
-	font-size: var(--t2);
+	font-size: var(--t3);
 	color: var(--text-muted);
 }
 
-/* The right-hand end of the top bar: the nav, and on the detail page a way
-   back out of it. One flex item so that .topbar stays a two-part bar — brand
-   at one end, everything else at the other — however many things are in it.
+/* The second line of the masthead on the detail page: the nav, and beside it a
+   way back out. Grouped so the two share one line under the title instead of
+   the header growing a third row for a single button.
 
    A wider gap than the nav's own, so the button reads as separate from the
-   three destinations rather than as a fourth one. */
+   destinations rather than as another one. */
 .topbar-end {
 	display: flex;
 	flex-wrap: wrap;
+	justify-content: center;
 	align-items: baseline;
 	gap: var(--s5);
 }
@@ -195,8 +212,13 @@ main {
 /* ---------- wall views ----------
  *
  * Three ways of drawing the SAME markup. Nothing below is produced by JS: the
- * card renderer emits one structure and a class on .wall decides how it reads,
- * so switching views cannot drift from what is on the wall.
+ * card renderer emits one structure and the shape chosen for the site decides
+ * how it reads, so switching views cannot drift from what is on the wall.
+ *
+ * Answered off the root element rather than off a class on the wall, because
+ * the choice is no longer the wall's. Every wall on the site follows it — the
+ * archive, and the palettes a color leads to on the detail page — and so does
+ * everything else built out of the same shape.
  *
  * Boxes is the canonical view and the default. It is the only one where width
  * means color count, which is the premise the rest of the site is built on.
@@ -206,11 +228,11 @@ main {
 
 /* --- circles: colors as overlapping dots --- */
 
-.wall--circle {
+[data-view='circle'] .wall {
 	--dot: 144px;
 }
 
-.wall--circle .card {
+[data-view='circle'] .card {
 	width: auto;
 	max-width: 100%;
 	height: auto;
@@ -223,7 +245,7 @@ main {
 	row-gap: var(--s2);
 }
 
-.wall--circle .swatch {
+[data-view='circle'] .wall .swatch {
 	flex: none;
 	width: var(--dot);
 	height: var(--dot);
@@ -240,7 +262,7 @@ main {
 	margin-left: calc(var(--dot) * -0.3);
 }
 
-.wall--circle .swatch:first-child {
+[data-view='circle'] .wall .swatch:first-child {
 	margin-left: 0;
 }
 
@@ -254,20 +276,20 @@ main {
  * box view's premise, rotated ninety degrees.
  */
 
-.wall--bar {
+[data-view='bar'] .wall {
 	--bar: 20px;
 
 	flex-direction: column;
 	flex-wrap: nowrap;      /* gap comes from .wall — it IS the separator here */
 }
 
-.wall--bar .card {
+[data-view='bar'] .card {
 	flex-direction: column;
 	width: 100%;
 	height: auto;
 }
 
-.wall--bar .swatch {
+[data-view='bar'] .wall .swatch {
 	flex: none;
 	width: 100%;
 	height: var(--bar);
@@ -278,8 +300,8 @@ main {
 	   palette spans 4.5 dots, so anything larger than this pushes the widest
 	   palettes off-screen and the page scrolls sideways. Derived rather than
 	   guessed, the same way --unit is on mobile. */
-	.wall--circle { --dot: calc((100vw - var(--s4) * 2) / 4.5); }
-	.wall--bar { --bar: 16px; }
+	[data-view='circle'] .wall { --dot: calc((100vw - var(--s4) * 2) / 4.5); }
+	[data-view='bar'] .wall { --bar: 16px; }
 }
 
 /* Hover changes the cursor and nothing else. No lift, no scale: on a screen
@@ -744,6 +766,55 @@ main {
 	box-shadow: inset 0 0 0 2px #fff, inset 0 0 0 4px #000;
 }
 
+/* --- the suggestions, in the shape the site is in ---
+ *
+ * The rings on the photograph stay rings whatever is chosen: they are pins in a
+ * map, not colors. What changes is the row underneath, which is the colors.
+ *
+ * Boxes are the resting form and are written above.
+ */
+
+/* Circles, lying on each other the way a palette does on the wall. No ring
+   around them, for the same reason there is none there: a stroke in the page
+   colour cuts a slot of empty page through wherever two meet. */
+[data-view='circle'] .extract {
+	width: calc(var(--card-height) / 2);     /* as wide as it is tall */
+	border: 0;
+	border-radius: 50%;
+	margin-left: calc(var(--card-height) / 2 * -0.3);
+}
+
+[data-view='circle'] .extract:first-child {
+	margin-left: 0;
+}
+
+[data-view='circle'] .extracted__row {
+	gap: 0;                                  /* the overlap is the spacing */
+}
+
+/* One length of color across the panel, not seven samples in a row. The pieces
+   still exist — each is what takes its own color when pressed — but they meet
+   without a gap and each is painted as the blend into the next, so what is
+   there to see is a bar and what is there to press is still a color.
+ *
+ * nowrap because a bar that wraps is two bars. Each piece gives up its width
+ * and shares the row instead, so seven or two, the bar is the same length. */
+[data-view='bar'] .extracted {
+	align-self: stretch;
+}
+
+[data-view='bar'] .extracted__row {
+	flex-wrap: nowrap;
+	gap: 0;
+}
+
+[data-view='bar'] .extract {
+	flex: 1 1 0;
+	width: auto;
+	min-width: 0;
+	border: 0;
+}
+
 .picked {
 	display: flex;
 	gap: var(--s3);
@@ -840,13 +911,35 @@ main {
 .frame-track svg {
 	width: 100%;
 	height: 100%;
+
+	/* An SVG clips to its own viewport by default. The ring is drawn on a rail
+	   inset a little way in from the edge, but what is drawn on that rail
+	   straddles it — a circle reaches half its width to either side, which is
+	   further out than the rail is in. Left to clip, every circle came back
+	   with its outer edge shaved flat. There is nothing out there to protect:
+	   the gutter to the panel beside it is wider than the overhang. */
+	overflow: visible;
 }
 
-/* SVG text takes no font from the page: it has to be told. The color is not
-   set here — each code carries its own on its tspan. */
-.frame-rail {
-	font-family: var(--font-num);
-	font-size: var(--t1);
+/* One stroke of the ring — one color's share of it, dashed so it shows a piece
+   in every n and phased into its own slot by the delay below.
+ *
+ * That delay is not decoration. Running the same animation from the same place
+ * but starting each copy a fraction of a cycle earlier IS the phase: a head
+ * start in time is a head start along the path, so the pieces sit one after
+ * another and stay that way for as long as they travel. One set of keyframes
+ * does the placing and the moving both.
+ *
+ * Under reduced motion base.css collapses this to nothing, which parks every
+ * stroke at --travel — exactly one period along, which is the picture it
+ * started from. The ring stands still and stays whole. */
+.ring-run {
+	animation: ring var(--lap) linear infinite;
+	animation-delay: calc(var(--i) / var(--n) * var(--lap) * -1);
+}
+
+@keyframes ring {
+	to { stroke-dashoffset: var(--travel); }
 }
 
 /* Stacked, one color per full-width band, inside a block of fixed height.

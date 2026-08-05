@@ -11,6 +11,7 @@
 //    palette stops being the user's.
 
 import { rgb255ToOklab, oklabToHex, distance } from './color.js';
+import { getView, onView } from './view.js';
 
 const MAX_EDGE = 900;      // canvas cap — plenty for color, cheap to scan
 const SAMPLE_TARGET = 6000;// pixels fed to k-means
@@ -65,7 +66,9 @@ export function mountImageMode({ onPick, onAdd, onOpen = () => {} }) {
 	const loupeCtx = loupe.getContext('2d');
 	loupeCtx.imageSmoothingEnabled = false;   // show the pixels, not a blur
 
-	let pixels = null;   // ImageData of the whole canvas
+	let pixels = null;        // ImageData of the whole canvas
+	let candidates = [];      // { x, y, hex } — what the image offered
+	let taken = null;         // index of the suggestion being held, if any
 
 	file.addEventListener('change', () => use(file.files?.[0]));
 
@@ -269,13 +272,18 @@ export function mountImageMode({ onPick, onAdd, onOpen = () => {} }) {
 		pickedHex.textContent = hex;
 		picked.hidden = false;
 
+		taken = index;
+		markTaken();
+
+		onPick(oklab);
+	}
+
+	function markTaken() {
 		for (const node of document.querySelectorAll('[data-candidate]')) {
-			const on = index !== null && Number(node.dataset.candidate) === index;
+			const on = taken !== null && Number(node.dataset.candidate) === taken;
 			node.classList.toggle('is-picked', on);
 			node.setAttribute('aria-pressed', String(on));
 		}
-
-		onPick(oklab);
 	}
 
 	function clearPick() {
@@ -286,33 +294,59 @@ export function mountImageMode({ onPick, onAdd, onOpen = () => {} }) {
 
 	/* ---------- candidates ---------- */
 
+	// Found once, drawn as often as needed. Reading them out of the image is
+	// k-means over several thousand samples; the shape they are drawn in is a
+	// preference that can change while the picture stays where it is, and there
+	// is no sense in asking the same question of the same pixels again.
 	function markCandidates() {
+		const samples = collectSamples();
+		const clusters = kmeans(samples, CLUSTERS);
+
+		candidates = spreadOut(clusters, CANDIDATES).map(cluster => {
+			const point = nearestSample(samples, cluster.center);
+			return { x: point.x, y: point.y, hex: oklabToHex(cluster.center) };
+		});
+
+		taken = null;
+		drawCandidates();
+	}
+
+	function drawCandidates() {
 		layer.replaceChildren();
 		row.replaceChildren();
 
-		const samples = collectSamples();
-		const clusters = kmeans(samples, CLUSTERS);
-		const chosen = spreadOut(clusters, CANDIDATES);
+		const view = getView();
 
-		chosen.forEach((cluster, index) => {
-			const point = nearestSample(samples, cluster.center);
-			const hex = oklabToHex(cluster.center);
-
+		candidates.forEach(({ x, y, hex }, index) => {
 			// Where it was found, on the image.
-			const dot = suggestion('candidate', hex, index, point);
-			dot.style.left = `${(point.x / canvas.width) * 100}%`;
-			dot.style.top = `${(point.y / canvas.height) * 100}%`;
+			const dot = suggestion('candidate', hex, index, x, y);
+			dot.style.left = `${(x / canvas.width) * 100}%`;
+			dot.style.top = `${(y / canvas.height) * 100}%`;
 			layer.append(dot);
 
 			// What was found, off the image.
-			row.append(suggestion('extract', hex, index, point));
+			const piece = suggestion('extract', hex, index, x, y);
+
+			// In the bar shape the row is one length of color rather than a set
+			// of samples set down side by side, so each piece carries the blend
+			// into the one after it and the joins between them disappear. The
+			// last runs back to the first, which is the only way a row of seven
+			// can end without a step.
+			if (view === 'bar' && candidates.length > 1) {
+				const next = candidates[(index + 1) % candidates.length].hex;
+				piece.style.background = `linear-gradient(to right, ${hex}, ${next})`;
+			}
+
+			row.append(piece);
 		});
 
 		layer.append(marker);   // replaceChildren above dropped it
-		extracted.hidden = chosen.length === 0;
+		extracted.hidden = candidates.length === 0;
+
+		markTaken();
 	}
 
-	function suggestion(className, hex, index, point) {
+	function suggestion(className, hex, index, x, y) {
 		const button = document.createElement('button');
 		button.type = 'button';
 		button.className = className;
@@ -321,9 +355,12 @@ export function mountImageMode({ onPick, onAdd, onOpen = () => {} }) {
 		button.setAttribute('aria-label', `Suggested color ${hex}`);
 		button.setAttribute('aria-pressed', 'false');
 
-		button.addEventListener('click', () => take(point.x, point.y, index));
+		button.addEventListener('click', () => take(x, y, index));
 		return button;
 	}
+
+	// Only the drawing, never the finding.
+	onView(drawCandidates);
 
 	function collectSamples() {
 		const total = canvas.width * canvas.height;

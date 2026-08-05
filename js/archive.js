@@ -6,37 +6,34 @@
 //
 // The view buttons are not a filter. They change how the same palettes are
 // drawn, and nothing is ever removed from the wall by pressing one.
+//
+// They are also no longer only about this wall. What is chosen here is the
+// shape the whole site draws colors in — see view.js — so these three buttons
+// are the site's one setting, and this page is where it is kept.
 
 import { listPalettes } from './db.js';
 import { renderWall } from './card.js';
-
-const VIEWS = ['box', 'circle', 'bar'];
-const VIEW_KEY = 'color-archive:view';
+import { getView, setView, onView } from './view.js';
 
 const wall = document.querySelector('#wall');
 const count = document.querySelector('#count');
 const segs = [...document.querySelectorAll('[data-view]')];
 
-// Switching view is a CSS class swap on the wall — the cards themselves are
-// identical in all three. That is why this never refetches or re-renders.
-function setView(view) {
-	for (const name of VIEWS) wall.classList.toggle(`wall--${name}`, name === view);
-
+// The wall itself is not touched. Every view draws the same cards from the same
+// data, and which one is showing is answered by the attribute view.js keeps on
+// the root element — so switching is a CSS question, never a re-render.
+function markPressed() {
 	for (const seg of segs) {
-		seg.setAttribute('aria-pressed', String(seg.dataset.view === view));
+		seg.setAttribute('aria-pressed', String(seg.dataset.view === getView()));
 	}
-
-	localStorage.setItem(VIEW_KEY, view);
 }
 
 for (const seg of segs) {
 	seg.addEventListener('click', () => setView(seg.dataset.view));
 }
 
-// A view is a way of looking, not a one-off action, so it should still be the
-// way you were looking when you come back.
-const saved = localStorage.getItem(VIEW_KEY);
-setView(VIEWS.includes(saved) ? saved : 'box');
+onView(markPressed);
+markPressed();
 
 
 async function load() {

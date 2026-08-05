@@ -16,6 +16,7 @@ import {
 
 import { renderSwatches } from './card.js';
 import { mountImageMode } from './extract.js';
+import { getView, onView } from './view.js';
 
 // Started with the page, deliberately not awaited.
 //
@@ -35,6 +36,29 @@ const database = import('./db.js');
 // floor stays — it is what makes the thing a palette rather than a color.
 const MIN_COLORS = 2;
 const MAX_CHROMA = 0.37;     // roughly the top of OKLCh chroma for sRGB
+
+// How finely the smooth gradient is sampled. Only for the bar, where the stops
+// are interpolated between and the count decides accuracy rather than choice.
+// Hue gets more of them because it is a full turn rather than a range.
+const AXIS_STEPS = 16;
+const HUE_STEPS = 24;
+
+// How far a dot lies on the one before it, as a share of its own width.
+//
+// Deeper than the three tenths the archive overlaps a palette by, and for a
+// reason the archive does not have: a card holds a handful of colors and the
+// overlap is there to say they belong together, while an axis is a continuum
+// being offered in pieces, and the more pieces it is cut into the closer it
+// stays to the thing it stands for.
+//
+// Two fifths rather than a half, which was too close to run: at half-cover the
+// row read as one thick line with scalloped edges instead of as circles lying
+// on each other. This is the most that can be taken while each one is still
+// plainly a circle.
+const DOT_OVERLAP = 0.4;
+
+// Fallback track height, for measuring before there is anything to measure.
+const DOT = 24;
 
 
 /* ---------- state ---------- */
@@ -142,10 +166,12 @@ function renderPicker() {
 	setRange(ui.sh, ui.nh, h);
 
 	// Real color along each axis, so the slider shows the consequence of
-	// moving it rather than a generic groove.
-	ui.sl.style.background = ramp(i => `oklch(${i / 10} ${c} ${h})`, 10);
-	ui.sc.style.background = ramp(i => `oklch(${l} ${(i / 10) * MAX_CHROMA} ${h})`, 10);
-	ui.sh.style.background = ramp(i => `oklch(${l} ${Math.max(c, 0.08)} ${i * 30})`, 12);
+	// moving it rather than a generic groove — and in whatever shape the site
+	// is in, so what an axis offers and what the archive is made of are the
+	// same thing.
+	axis(ui.sl, t => `oklch(${t} ${c} ${h})`, AXIS_STEPS);
+	axis(ui.sc, t => `oklch(${l} ${t * MAX_CHROMA} ${h})`, AXIS_STEPS);
+	axis(ui.sh, t => `oklch(${l} ${Math.max(c, 0.08)} ${t * 360})`, HUE_STEPS);
 
 	// Which color the sliders are holding, and nothing about how to let go of
 	// it. Empty when it is a new one, because then there is nothing to name.
@@ -170,9 +196,103 @@ function renderReadouts(hex, oklch) {
 		: '';
 }
 
-function ramp(at, steps) {
-	const stops = Array.from({ length: steps + 1 }, (_, i) => at(i));
-	return `linear-gradient(to right, ${stops.join(', ')})`;
+// Paints one axis, and decides what may be taken from it.
+//
+// The two go together. A bar of unbroken color has to be pickable anywhere, or
+// it is showing colors it will not give; a row of squares has to snap, or the
+// squares are decoration over a continuum. So the picture and the step are set
+// in the same breath and cannot come apart.
+function axis(range, at, sampled) {
+	const view = getView();
+
+	const width = range.getBoundingClientRect().width;
+
+	// A square fills the track: it is the groove, drawn in color, and its side
+	// is the whole height including the border it is painted under.
+	const square = range.getBoundingClientRect().height || DOT;
+
+	// A circle sits in the track instead. Made the full height it meets the
+	// border at the top and at the bottom, and a line drawn straight across
+	// both ends of a circle is a circle with its ends cut off. clientHeight is
+	// the inside of the groove, and it comes down a further hair so there is
+	// daylight above and below rather than a join.
+	const dot = Math.max(8, (range.clientHeight || DOT) - 2);
+
+	// Circles sit closer together than they are wide, so they lie on each
+	// other; squares sit exactly as far apart as they are wide, so they meet.
+	const pitch = view === 'circle' ? dot * (1 - DOT_OVERLAP) : square;
+
+	const steps = view === 'bar' ? sampled : cellsAcross(width, pitch, sampled);
+	const span = Number(range.max) - Number(range.min);
+
+	// Fine enough to be continuous at any width the slider can have. Restored
+	// on the way back from a stepped shape, not left where that shape put it.
+	range.step = view === 'bar' ? span / 1000 : span / steps;
+
+	range.style.background = track(at, steps, view, dot / 2);
+}
+
+// A square is as wide as it is tall, so how many an axis holds is not a number
+// to choose — it is however many fit. The count follows the track, which is why
+// it is measured rather than set: a fixed count would draw squares at one
+// window width and rectangles at every other.
+function cellsAcross(width, pitch, fallback) {
+	// Before layout, or on a hidden panel. Nothing to divide.
+	if (!width || !pitch) return fallback;
+
+	// Neither so few that the axis stops being an axis, nor so many that the
+	// track is being asked to draw more than it can show. The ceiling is high
+	// because overlapping circles are spaced far closer than they are wide —
+	// what has to stay legible is the circle, not the step between two.
+	return Math.min(96, Math.max(6, Math.round(width / pitch)));
+}
+
+// t runs 0 to 1 across the axis, so the same callback serves every shape and
+// the number of colors is the only thing that changes.
+function track(at, steps, view, radius) {
+	const colors = Array.from({ length: steps + 1 }, (_, i) => at(i / steps));
+
+	if (view === 'bar') {
+		return `linear-gradient(to right, ${colors.join(', ')})`;
+	}
+
+	if (view === 'circle') {
+		// One dot per color, centred where the thumb comes to rest, each lying
+		// on the one before it — the same overlap the archive draws a palette
+		// with when it is in this shape.
+		//
+		// The radius is stated rather than left to closest-side. Closest-side
+		// measures to the nearest edge of the box, and for the dot sitting at
+		// one end of the track that edge is the end itself: radius nothing, dot
+		// gone. The first and last colors of every axis were missing.
+		const dots = colors.map((color, i) => {
+			const at = ((i / steps) * 100).toFixed(3);
+			return `radial-gradient(circle ${radius}px at ${at}% 50%, ${color} 96%, transparent 100%)`;
+		});
+
+		// Reversed, because the first layer in the list is the one painted on
+		// top. Left as written, each dot would be covered by the one to its
+		// left and the row would read backwards against the axis it describes.
+		dots.reverse();
+
+		// Underneath everything, so what shows between the dots is the groove
+		// they are lying in rather than the panel behind it.
+		return `${dots.join(', ')}, var(--surface-sunk)`;
+	}
+
+	// Squares, meeting flush. Each color holds the strip nearest to it rather
+	// than the strip between it and the next, so a square is the ground the
+	// thumb lands on and its middle is where the thumb sits. The two on the
+	// ends are half that width, being the ends.
+	const edge = i => `${(((i + 0.5) / steps) * 100).toFixed(3)}%`;
+
+	const cells = colors.map((color, i) => {
+		const from = i === 0 ? '0%' : edge(i - 1);
+		const to = i === steps ? '100%' : edge(i);
+		return `${color} ${from} ${to}`;
+	});
+
+	return `linear-gradient(to right, ${cells.join(', ')})`;
 }
 
 function setRange(range, number, value) {
@@ -409,5 +529,15 @@ ui.register.addEventListener('click', async () => {
 	}
 });
 
+
+// The axes are painted in the shape the site is in, and that shape is chosen on
+// another screen — so a visit that begins here has to be able to change under
+// it. Nothing about the color being held changes; only what the axis offers.
+onView(render);
+
+// A square axis is measured against its own track, so a track that changes
+// width has to be counted again — otherwise the squares stretch into rectangles
+// the moment the window does.
+new ResizeObserver(() => renderPicker()).observe(ui.sl);
 
 render();
