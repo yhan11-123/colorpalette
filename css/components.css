@@ -34,6 +34,8 @@
    needs to sit where a hand expects a control to be, and the page below can
    start from the middle the way the palettes on it do. */
 .topbar {
+	position: relative;      /* the way out is placed against this */
+
 	display: flex;
 	flex-direction: column;
 	align-items: center;
@@ -69,18 +71,28 @@
 	color: var(--text-muted);
 }
 
-/* The second line of the masthead on the detail page: the nav, and beside it a
-   way back out. Grouped so the two share one line under the title instead of
-   the header growing a third row for a single button.
+/* The way out of the detail page, at the left edge of the masthead.
+ *
+ * Taken out of the flow rather than made the first item in it. The name and the
+ * destinations are centred on the page, and anything sharing their line pushes
+ * that centre off to one side — the title would sit wherever this button left
+ * room for it, and move again the moment the wording changed.
+ *
+ * Lifted by --s2 so its middle sits on the line of the name rather than its
+ * top edge, the button being the taller of the two. */
+.back {
+	position: absolute;
+	left: 0;
+	top: calc(var(--s8) - var(--s2));
+}
 
-   A wider gap than the nav's own, so the button reads as separate from the
-   destinations rather than as another one. */
-.topbar-end {
-	display: flex;
-	flex-wrap: wrap;
-	justify-content: center;
-	align-items: baseline;
-	gap: var(--s5);
+/* Below this the button and the centred name would be reaching for the same
+   space, so it stops holding the edge and takes a line of its own. */
+@media (max-width: 680px) {
+	.back {
+		position: static;
+		align-self: flex-start;
+	}
 }
 
 /* the current page is stated by weight and color, never by an accent */

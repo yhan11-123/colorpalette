@@ -32,22 +32,21 @@
 	<header class="topbar">
 		<a class="brand" href="index.html">Color Archive</a>
 
-		<!-- Grouped so the nav and the way out share the second line of the
-		     masthead, rather than the header growing a third row for one
-		     button. -->
-		<div class="topbar-end">
-			<nav class="nav">
-				<a href="index.html">Make</a>
-				<a href="archive.html">Archive</a>
-			</nav>
+		<nav class="nav">
+			<a href="index.html">Make</a>
+			<a href="archive.html">Archive</a>
+		</nav>
 
-			<!-- A link, not history.back(): this page is arrived at from the
-			     archive, from the make screen and from another palette's
-			     filter, and going back should land in the archive from all
-			     three. Styled as a control rather than a fourth nav item —
-			     it is the way out of this page, not a fourth destination. -->
-			<a class="btn" href="archive.html">← Back to the archive</a>
-		</div>
+		<!-- A link, not history.back(): this page is arrived at from the
+		     archive, from the make screen and from another palette's filter,
+		     and going back should land in the archive from all three. Styled as
+		     a control rather than a third nav item — it is the way out of this
+		     page, not a third destination.
+
+		     Held out of the masthead's own layout so the name and the
+		     destinations stay centred on the page rather than centred on
+		     whatever is left over beside this. -->
+		<a class="btn back" href="archive.html">← Back to the archive</a>
 	</header>
 
 	<main class="detail" id="detail" hidden>
