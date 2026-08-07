@@ -41,31 +41,41 @@
 	align-items: center;
 	gap: var(--s3);
 
-	/* Air above the name, and not much below it. A masthead wants the page to
-	   begin a little way down rather than at the very top edge of the window —
-	   the space is what makes it read as a title rather than as the first row
-	   of the content. */
-	padding-top: var(--s8);
+	/* --s5, down from --s8. That 64px was doing the work of making a 20px name
+	   read as a masthead rather than as the first line of the page; a 40px name
+	   does that by itself, and the same gap under it then read as the title
+	   having been pushed away from a window it was meant to sit at the top of.
+
+	   With the page's own --page-pad above this, the name still begins 48px
+	   down rather than against the edge. */
+	padding-top: var(--s5);
 	padding-bottom: var(--s4);
 
 	margin-bottom: var(--s6);
 	border-bottom: 1px solid var(--line);
 }
 
-/* --t4, a step above everything else in the masthead. At --t3 the name sat at
-   body size and had only its weight to lead with; the page is named here, and
-   the name should be the first thing read on it. */
+/* --t5, and the only thing on the site set in it. At --t4 the name was merely
+   the largest of several sizes in a row of text; at 40px it stops competing and
+   becomes the masthead, which is what a name at the top of a page is for.
+
+   The line-height is stated rather than inherited. Body copy runs at 1.6 to be
+   read in paragraphs, and a single 40px word given 1.6 carries 24px of empty
+   line box around it — most of the air above this name was inside the letters'
+   own line, not in the padding above them, and no amount of trimming the
+   masthead's padding would have reached it. */
 .brand {
-	font-size: var(--t4);
+	font-size: var(--t5);
 	font-weight: var(--w-medium);
+	line-height: var(--lh-label);
 }
 
-/* --t3, one step under the name and one step over --t2. Under the title rather
+/* --t3, well under the name now and one step over --t2. Under the title rather
    than tucked into a corner, the destinations are half of what the masthead is
    for, and 13px read as a footnote to it.
 
-   The name still leads, now on size as well as weight, while these stay regular
-   and muted. */
+   The name leads by size alone at this point; the weight it keeps is what tells
+   it from the title on a detail page, not from these. */
 .nav {
 	display: flex;
 	gap: var(--s4);

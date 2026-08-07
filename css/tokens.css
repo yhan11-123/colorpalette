@@ -38,11 +38,16 @@
 	--font-ui:   ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
 	--font-num:  "JetBrains Mono", ui-monospace, monospace;
 
-	/* type scale — four sizes, two weights, no more */
+	/* type scale — five sizes, two weights, no more.
+	   --t5 has exactly one user: the name of the site. Everything else on every
+	   screen is a label, a number or a title, and none of those is display type.
+	   It is a token rather than a literal on .brand so the size still has a
+	   place in the scale and can be answered for on a phone, below. */
 	--t1: 11px;
 	--t2: 13px;
 	--t3: 15px;
 	--t4: 20px;
+	--t5: 40px;
 
 	--w-regular: 400;
 	--w-medium:  500;
@@ -77,6 +82,16 @@
 		--page-pad: var(--s4);
 		--unit: calc((100vw - var(--s4) * 2) / 6);
 		--card-height: 125px;
+
+		/* Not because 40px overflows — measured, "Color Archive" comes to about
+		   237px there and a 320px phone leaves 288 between the gutters. It fits,
+		   and that is the problem: the name would span four fifths of the screen
+		   and read as a banner rather than as the top of a page. At 32px it comes
+		   to around 190 and the line still has air at both ends.
+
+		   The only size in the scale that has to answer for the length of one
+		   particular word, because it is the only one set as display type. */
+		--t5: 32px;
 	}
 }
 
