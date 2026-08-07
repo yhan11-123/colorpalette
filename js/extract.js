@@ -21,9 +21,13 @@ const KMEANS_PASSES = 12;
 const LOUPE_ZOOM = 8;
 
 
+//   onPick — one color, taken by the eyedropper or by pressing a suggestion.
+//            The press is the choice: there is no separate Add here, so what
+//            the caller does with this is add it. Rule 2 above still holds —
+//            this fires once per press, never per candidate found.
 //   onOpen — called when a file arrives while some other mode is showing, so
 //            the panel that reads it can be brought up
-export function mountImageMode({ onPick, onAdd, onOpen = () => {} }) {
+export function mountImageMode({ onPick, onOpen = () => {} }) {
 	const file = document.querySelector('#file');
 	const stage = document.querySelector('#stage');
 	const canvas = document.querySelector('#canvas');
@@ -37,7 +41,6 @@ export function mountImageMode({ onPick, onAdd, onOpen = () => {} }) {
 	const picked = document.querySelector('#picked');
 	const pickedChip = document.querySelector('#pickedChip');
 	const pickedHex = document.querySelector('#pickedHex');
-	const pickedAdd = document.querySelector('#pickedAdd');
 
 	if (!file || !canvas) return;
 
@@ -47,8 +50,6 @@ export function mountImageMode({ onPick, onAdd, onOpen = () => {} }) {
 	const marker = document.createElement('div');
 	marker.className = 'pick-marker';
 	marker.hidden = true;
-
-	pickedAdd.addEventListener('click', () => onAdd());
 
 	// The overlay is positioned in percentages of its own box, so that box has
 	// to be the image and nothing else. Measuring the canvas directly makes the
@@ -275,6 +276,8 @@ export function mountImageMode({ onPick, onAdd, onOpen = () => {} }) {
 		taken = index;
 		markTaken();
 
+		// Last, and it is what puts the color in the palette. Everything above
+		// is this function saying what it just took; this is it handing it over.
 		onPick(oklab);
 	}
 

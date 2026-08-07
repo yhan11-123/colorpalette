@@ -70,24 +70,27 @@ const tray = [];
 
 let selected = null;                                    // index in tray, or null
 
+// The color under the sliders and not yet in the tray. Only precision mode has
+// one: sliders move through every color between where they started and where
+// they stopped, so there has to be somewhere to hold one that has not been
+// chosen yet. Image mode picks by pressing, which is already a decision, and
+// goes straight into the tray without passing through here.
+//
 // Every slider starts at the middle of its own range, so the first screen
 // shows the picker at rest rather than at somebody's chosen color.
 let draft = { l: 0.5, c: MAX_CHROMA / 2, h: 180 };
-
-let draftSource = 'picker';
 
 const el = id => document.querySelector('#' + id);
 
 const ui = {
 	tray: el('tray'), trayCount: el('trayCount'),
-	add: el('add'), register: el('register'),
+	add: el('add'), register: el('register'), registerNote: el('registerNote'),
 	spreadL: el('spreadL'), spreadC: el('spreadC'), spreadH: el('spreadH'),
 	preview: el('preview'), hex: el('hex'), editing: el('editing'),
 	sl: el('sl'), sc: el('sc'), sh: el('sh'),
 	nl: el('nl'), nc: el('nc'), nh: el('nh'),
 	contrast: el('contrast'), gamut: el('gamut'),
 	pickerPanel: el('pickerPanel'), imagePanel: el('imagePanel'),
-	pickedAdd: el('pickedAdd'),
 };
 
 
@@ -449,7 +452,9 @@ ui.tray.addEventListener('keydown', e => {
 	ui.tray.children[to]?.querySelector('.swatch__select')?.focus();
 });
 
-ui.add.addEventListener('click', () => addColor(draft, draftSource));
+// The one place a slider-tuned color is declared finished. Image mode has no
+// equivalent because pressing a point on a photograph already is one.
+ui.add.addEventListener('click', () => addColor(draft, 'picker'));
 
 function addColor(oklch, sourceMode) {
 	tray.push({ oklch: { ...oklch }, sourceMode });
@@ -479,18 +484,17 @@ for (const button of document.querySelectorAll('.mode')) {
 	button.addEventListener('click', () => setMode(button.dataset.mode));
 }
 
-// Image mode hands back one color at a time, exactly like the sliders do.
-// It never fills the tray by itself.
+// Image mode hands back one color at a time, and each one goes straight into
+// the tray. Rule 2 of extract.js still holds — the photograph never fills the
+// palette by itself; every color in here was pressed for.
+//
+// It does not become the selected color. Selecting hands the sliders to it, and
+// the sliders are on the other panel: a press on the photograph would silently
+// re-aim a set of controls that is not on screen, and the next visit to
+// precision mode would open on a color the user thought they had finished with.
 mountImageMode({
 	onPick(oklab) {
-		draft = oklabToOklch(oklab);
-		draftSource = 'image';
-		selected = null;
-		render();
-	},
-
-	onAdd() {
-		addColor(draft, draftSource);
+		addColor(oklabToOklch(oklab), 'image');
 	},
 
 	onOpen() {
@@ -506,6 +510,7 @@ ui.register.addEventListener('click', async () => {
 
 	ui.register.disabled = true;
 	ui.register.textContent = 'Registering…';
+	ui.registerNote.textContent = '';
 
 	try {
 		// Where the wait for the database actually belongs: at the one moment
@@ -522,10 +527,13 @@ ui.register.addEventListener('click', async () => {
 
 		location.href = `palette.html?id=${encodeURIComponent(palette.id)}${twin}`;
 	} catch (error) {
-		// Errors say what happened and what to do, and do not apologise.
+		// Errors say what happened and what to do, and do not apologise. Beside
+		// the button that failed, not inside the precision panel: that panel is
+		// hidden whenever image mode is open, and this went unread there.
 		ui.register.textContent = 'Register';
 		ui.register.disabled = false;
-		ui.gamut.textContent = `Could not register: ${error.message}. The tray is untouched — try again.`;
+		ui.registerNote.textContent =
+			`Could not register: ${error.message}. The tray is untouched — try again.`;
 	}
 });
 

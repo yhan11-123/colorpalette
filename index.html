@@ -39,45 +39,11 @@
 
 	<main class="make">
 
-		<!-- ---------- the tray: the palette being built ----------
-		     Same unit width as a gallery card, so it grows one unit to the
-		     right per color and already looks like what will hang on the wall.
-		     No empty slots are drawn: six visible boxes read as homework. -->
-		<section class="tray-area">
-			<div class="tray" id="tray" aria-label="Palette being built"></div>
-
-			<!-- Register lives here because it acts on the palette, not on a
-			     color. Adding a color belongs to whichever mode produced it,
-			     so each panel carries its own Add.
-
-			     The count is the only text here. What the tray is for, how a
-			     color gets into it and how one comes out are all things the
-			     controls themselves say by being pressed. -->
-			<div class="tray-actions">
-				<button type="button" class="btn btn--primary" id="register" disabled>Register</button>
-				<span class="label num" id="trayCount">0 colors</span>
-			</div>
-		</section>
-
-
-		<!-- ---------- spread: always visible, never collapsed ----------
-		     Most of what makes a palette work is explained by these three
-		     numbers, and no other tool shows them. -->
-		<section class="spread" id="spread">
-			<div class="spread__item">
-				<span class="label">Lightness spread</span>
-				<span class="num" id="spreadL">—</span>
-			</div>
-			<div class="spread__item">
-				<span class="label">Chroma spread</span>
-				<span class="num" id="spreadC">—</span>
-			</div>
-			<div class="spread__item">
-				<span class="label">Hue spread</span>
-				<span class="num" id="spreadH">—</span>
-			</div>
-		</section>
-
+		<!-- The screen reads top to bottom in the order the work happens:
+		     choose where the color comes from, take one, and watch the palette
+		     grow underneath. The tray used to sit above all of this, which put
+		     the result before the thing that produces it and left the source
+		     panels reading as an appendix to a palette that was still empty. -->
 
 		<!-- ---------- modes: ways to get ONE color into the tray ----------
 		     Not equal-weight tabs. Precision is the base surface; image is
@@ -171,19 +137,79 @@
 				<p class="label">Suggested colors</p>
 				<div class="extracted__row" id="extractedRow"></div>
 			</div>
+		</section>
 
-			<!-- What you just took, shown where you are looking. Without this the
-			     only feedback is the preview swatch inside the precision panel,
-			     which is hidden while image mode is open. -->
-			<div class="picked" id="picked" hidden>
-				<span class="chip chip--lg" id="pickedChip"></span>
-				<div class="picked__meta">
-					<span class="num" id="pickedHex"></span>
-				</div>
-				<button type="button" class="btn" id="pickedAdd">Add color</button>
+
+		<!-- ---------- the tray: the palette being built ----------
+		     Same unit width as a gallery card, so it grows one unit to the
+		     right per color and already looks like what will hang on the wall.
+		     No empty slots are drawn: six visible boxes read as homework.
+
+		     Below the sources rather than above them: this is what they are
+		     filling, and a color dropping in one row under the panel it came
+		     from is the whole feedback that the press did anything. -->
+		<section class="tray-area">
+			<div class="tray" id="tray" aria-label="Palette being built"></div>
+
+			<!-- Register lives here because it acts on the palette, not on a
+			     color — and it is the last thing on the screen because it is the
+			     last thing you do.
+
+			     The count is the only standing text. What the tray is for, how a
+			     color gets into it and how one comes out are all things the
+			     controls themselves say by being pressed. The note beside it is
+			     empty until a register fails, and says so here rather than
+			     inside the precision panel, which is hidden half the time. -->
+			<div class="tray-actions">
+				<button type="button" class="btn btn--primary" id="register" disabled>Register</button>
+				<span class="label num" id="trayCount">0 colors</span>
+				<span class="label" id="registerNote" role="status"></span>
 			</div>
 		</section>
 
+
+		<!-- ---------- spread: always visible, never collapsed ----------
+		     Most of what makes a palette work is explained by these three
+		     numbers, and no other tool shows them. Under the tray, because it
+		     describes the tray. -->
+		<section class="spread" id="spread">
+			<div class="spread__item">
+				<span class="label">Lightness spread</span>
+				<span class="num" id="spreadL">—</span>
+			</div>
+			<div class="spread__item">
+				<span class="label">Chroma spread</span>
+				<span class="num" id="spreadC">—</span>
+			</div>
+			<div class="spread__item">
+				<span class="label">Hue spread</span>
+				<span class="num" id="spreadH">—</span>
+			</div>
+
+			<!-- The color just taken off a photograph, at the far end of the row
+			     that describes the palette it landed in.
+
+			     It used to have a row of its own under the image, which is a
+			     whole band of the screen spent on one swatch and six characters.
+			     This row was already half empty, and the two belong together
+			     anyway: these numbers say what the palette is, and this says
+			     what was last put into it.
+
+			     Last rather than first, and pushed rather than placed. The three
+			     numbers are always there and this comes and goes, so it takes
+			     the slack at the right end and they never move under it.
+
+			     A small chip now, not --lg. The large one was the only place a
+			     picked color could be seen at any size; a press puts the color
+			     straight into the tray these days, so what is needed here is a
+			     mark saying which color, not a surface to judge it on. -->
+			<div class="picked" id="picked" hidden>
+				<span class="chip" id="pickedChip"></span>
+				<div class="picked__meta">
+					<span class="num" id="pickedHex"></span>
+				</div>
+			</div>
+		</section>
 
 	</main>
 

@@ -576,10 +576,14 @@ main {
 	transition: width 120ms ease-out;
 }
 
+/* Wraps, because #registerNote can carry a whole sentence when a register
+   fails. Unwrapped, that sentence pushed the row past the page on a phone and
+   the message that was meant to be read went off the right edge. */
 .tray-actions {
 	display: flex;
 	gap: var(--s3);
 	align-items: center;
+	flex-wrap: wrap;
 }
 
 /* Always visible. Most of what makes a palette work is explained by these
@@ -829,21 +833,41 @@ main {
 	border: 0;
 }
 
+/* Sits at the end of the .spread row now, not in a band of its own under the
+   image, so the rule that separated it from the panel above goes with it — the
+   row already has a border on each side and a second one inside it would cut
+   the row in two.
+
+   margin-left: auto is what keeps the three spread numbers still. Laid out
+   normally, a block that appears on the first pick and disappears on the next
+   image would shove them left and right under the reader; taking the slack
+   instead means it grows into space nothing else wanted. */
 .picked {
 	display: flex;
 	gap: var(--s3);
 	align-items: center;
 	flex-wrap: wrap;
 
-	padding-top: var(--s3);
-	border-top: 1px solid var(--line);
+	margin-left: auto;
 }
 
+/* Once the row wraps, this is alone on its own line and there is no slack left
+   to take — auto then pushes it hard against the right edge, reading as
+   something that fell off the row rather than the end of it. */
+@media (max-width: 680px) {
+	.picked {
+		margin-left: 0;
+	}
+}
+
+/* No margin-right: auto any more. It was there to push an Add button to the far
+   end of the row; with the press on the photograph doing the adding, there is
+   nothing to its right to push away from, and the hex reads better sitting
+   against the chip it belongs to than stretched across the panel. */
 .picked__meta {
 	display: flex;
 	flex-direction: column;
 	gap: var(--s1);
-	margin-right: auto;
 }
 
 .loupe {
